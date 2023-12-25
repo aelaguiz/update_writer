@@ -22,8 +22,8 @@ def gmail_authenticate(app_id):
     creds_file = os.getenv(f"{app_id}_SECRET")
     creds = None
     # The file token.pickle stores the user's access and refresh tokens.
-    if os.path.exists('token.pickle'):
-        with open('token.pickle', 'rb') as token:
+    if os.path.exists(f'{app_id}_token.pickle'):
+        with open(f'{app_id}_token.pickle', 'rb') as token:
             creds = pickle.load(token)
     # If there are no valid credentials available, let the user log in.
     if not creds or not creds.valid:
@@ -33,25 +33,34 @@ def gmail_authenticate(app_id):
             flow = InstalledAppFlow.from_client_secrets_file(creds_file, SCOPES)
             creds = flow.run_local_server(port=0)
         # Save the credentials for the next run
-        with open('token.pickle', 'wb') as token:
+        with open(f'{app_id}_token.pickle', 'wb') as token:
             pickle.dump(creds, token)
     return build('gmail', 'v1', credentials=creds)
 
-def list_messages(service, user_id, query=''):
+def list_messages(service, user_id, query='', batch_size=100):
     try:
         logger.debug(f'Listing messages with query: {query}')
-        response = service.users().messages().list(userId=user_id, q=query).execute()
+        response = service.users().messages().list(userId=user_id, q=query, maxResults=batch_size).execute()
         messages = []
         if 'messages' in response:
             messages.extend(response['messages'])
-        while 'nextPageToken' in response:
+
+        # Check if the number of messages is already at or above the batch size
+        while 'nextPageToken' in response and len(messages) < batch_size:
             page_token = response['nextPageToken']
-            response = service.users().messages().list(userId=user_id, q=query, pageToken=page_token).execute()
+            response = service.users().messages().list(userId=user_id, q=query, pageToken=page_token, maxResults=batch_size).execute()
             messages.extend(response['messages'])
+            # Reduce the number of messages to the batch size if it exceeds
+            if len(messages) > batch_size:
+                messages = messages[:batch_size]
+                break
+
         return messages
     except Exception as error:
         print(f'An error occurred: {error}')
         return None
+
+
 
 def parse_subject_body(message):
     subject = None

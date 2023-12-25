@@ -9,8 +9,17 @@ docdb = None
 llm = None
 
 OPENAI_MODEL = os.getenv("OPENAI_MODEL")
-EMAILDB_PATH = os.getenv('EMAILDB_PATH')
+EMAILDB_PATH = None
 OPENAI_TEMPERATURE = float(os.getenv("OPENAI_TEMPERATURE"))
+
+COMPANY_ENV = None
+
+def set_company_environment(company_env):
+    global COMPANY_ENV
+    global EMAILDB_PATH
+
+    EMAILDB_PATH = os.getenv(f'{company_env}_EMAILDB_PATH')
+    COMPANY_ENV = company_env
 
 def get_embedding_fn():
     return OpenAIEmbeddings(openai_api_key=os.getenv('OPENAI_API_KEY'), timeout=30)

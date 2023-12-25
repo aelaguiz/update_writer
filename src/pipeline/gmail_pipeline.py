@@ -1,8 +1,11 @@
+import argparse
 from prefect import task, flow
 from ..lib.lib_logging import get_logger, get_run_logger, setup_logging
 from ..lib import lib_gmail
 from ..lib import lib_emaildb
 import dotenv
+from prefect.concurrency.sync import rate_limit
+
 
 dotenv.load_dotenv()
 
@@ -10,11 +13,13 @@ setup_logging()
 
 logger = get_logger()
 
-service = lib_gmail.gmail_authenticate('FC')
+COMPANY_ENV = None
 
 @task
 def get_gmail_messages(loaded_email_ids):
-    emails_sent = lib_gmail.list_messages(service, 'me', query='from:me')
+    service = lib_gmail.gmail_authenticate(COMPANY_ENV)
+    logger.info(f"Getting emails sent from me")
+    emails_sent = lib_gmail.list_messages(service, 'me', query='from:me', batch_size=2000)
 
     emails = []
     for email in emails_sent:
@@ -26,8 +31,9 @@ def get_gmail_messages(loaded_email_ids):
 
 @task
 def get_message_details(email):
+    rate_limit("gmail_api", 1)
     try:
-        service = lib_gmail.gmail_authenticate('FC')
+        service = lib_gmail.gmail_authenticate(COMPANY_ENV)
         details = lib_gmail.get_message(service, 'me', email['id'])
     except Exception as e:
         logger.error(f"Error getting message details: {e} {type(e)}")
@@ -75,5 +81,13 @@ def gmail_pipeline():
 
 if __name__ == '__main__':
     logger.info("Starting pipeline")
+
+    parser = argparse.ArgumentParser(description='Run the Gmail pipeline for a specific company.')
+    parser.add_argument('company', choices=['cj', 'fc'], help='Specify the company environment ("cj" or "fc").')
+    args = parser.parse_args()
+
+    COMPANY_ENV = args.company.upper()
+
+    lib_emaildb.set_company_environment(COMPANY_ENV)
 
     gmail_pipeline()
