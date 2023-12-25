@@ -76,7 +76,7 @@ def parse_subject_body(message):
         email_message = message_from_string(raw_email_data, policy=default)
 
         # Extract subject, from, and to addresses
-        subject = email_message['subject']
+        subject = email_message.get('subject', '')
         from_address = email_message['from']
         to_address = email_message['to']
         date_string = email_message['date']

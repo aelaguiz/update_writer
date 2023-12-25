@@ -53,7 +53,7 @@ def get_email_ids():
 
 
 def add_email(email_details):
-    logger = lib_logging.get_run_logger()
+    logger = lib_logging.get_logger()
     try:
         timestamp = int(email_details['send_date'].timestamp())
 
@@ -65,7 +65,7 @@ def add_email(email_details):
             'to_address': email_details['to'] if email_details['to'] else '',
             'subject': email_details['subject'] if email_details['subject'] else '',
         }
-        logger.info(f"Metadata: {metadata}")
+        # logger.info(f"Metadata: {metadata}")
         docdb.add_texts([email_details['original_message']], metadatas=[metadata])
     except Exception as e:
         logger.error(f"Error loading document into Chroma: {e}")

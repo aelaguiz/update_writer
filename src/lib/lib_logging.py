@@ -4,7 +4,7 @@ import json
 import re
 import dotenv
 import logging
-import prefect
+# import prefect
 from datetime import datetime
 from rich.console import Console
 from rich.logging import RichHandler
@@ -21,17 +21,19 @@ console = Console()
 
 
 def get_logger(level=logging.DEBUG):
-    prefect_logger = prefect.logging.get_logger()
-    prefect_logger.setLevel(level)
+    return logging.getLogger("amir")
+    # prefect_logger = prefect.logging.get_logger()
+    # prefect_logger.setLevel(level)
 
-    return prefect_logger
+    # return prefect_logger
 
 
 def get_run_logger(level=logging.DEBUG):
-    prefect_logger = prefect.logging.get_run_logger()
-    prefect_logger.setLevel(level)
+    return logging.getLogger("amir")
+    # prefect_logger = prefect.logging.get_run_logger()
+    # prefect_logger.setLevel(level)
 
-    return prefect_logger
+    # return prefect_logger
 
 # Configure logging
 def setup_logging():
@@ -50,7 +52,7 @@ def setup_logging():
     logger.setLevel(logging.DEBUG)  # Set the logger to debug level
 
     rich_handler = RichHandler(console=console, rich_tracebacks=True, markup=True)
-    rich_handler.setLevel(logging.DEBUG)
+    rich_handler.setLevel(logging.INFO)
     logger.addHandler(rich_handler)
 
     # Create file handler which logs even debug messages
@@ -59,6 +61,10 @@ def setup_logging():
     fh_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     fh.setFormatter(fh_formatter)
     logger.addHandler(fh)
+
+    httpx_logger = logging.getLogger('httpx')
+    httpx_logger.setLevel(logging.WARNING)
+
 
     # Create console handler with a higher log level
     # ch = logging.StreamHandler()
