@@ -55,10 +55,13 @@ def get_email_ids():
 def add_email(email_details):
     logger = lib_logging.get_run_logger()
     try:
+        timestamp = int(email_details['send_date'].timestamp())
+
         metadata = {
             'email_id': email_details['id'],
             'thread_id': email_details['threadId'],
             'from_address': email_details['from'],
+            'send_date': timestamp,
             'to_address': email_details['to'] if email_details['to'] else '',
             'subject': email_details['subject'] if email_details['subject'] else '',
         }

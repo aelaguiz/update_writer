@@ -3,6 +3,7 @@ import pickle
 import re
 import base64
 from email import message_from_string
+from email.utils import parsedate_to_datetime
 from email.policy import default
 from flanker import mime
 from email.parser import Parser
@@ -67,6 +68,7 @@ def parse_subject_body(message):
     body = None
     from_address = None
     to_address = None
+    send_date = None
 
     try:
         # Decode the raw email data
@@ -77,6 +79,10 @@ def parse_subject_body(message):
         subject = email_message['subject']
         from_address = email_message['from']
         to_address = email_message['to']
+        date_string = email_message['date']
+
+        if date_string:
+            send_date = parsedate_to_datetime(date_string)
     except Exception as e:
         logger.error(f"Failed to parse subject, from, to: {e} {type(e)}")
         raise e
@@ -103,7 +109,7 @@ def parse_subject_body(message):
         logger.error(body)
         raise e
 
-    return subject, body, from_address, to_address, original_message
+    return subject, body, from_address, to_address, send_date, original_message
 
 def parse_out_original_message(email_content):
     # Remove headers

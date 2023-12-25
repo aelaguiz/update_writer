@@ -43,7 +43,7 @@ def setup_logging():
     args_safe = "_".join(re.sub(r'[^\w]', '', arg) for arg in sys.argv[1:])
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_filename = f"logs/{script_name}_{args_safe}_{timestamp}.log"
-    log_filename = f"logs/{script_name}.log"
+    # log_filename = f"logs/{script_name}.log"
 
     # Create loggers
     logger = logging.getLogger()
