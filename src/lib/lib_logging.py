@@ -35,8 +35,13 @@ def get_run_logger(level=logging.DEBUG):
 
     # return prefect_logger
 
+inited = False
 # Configure logging
 def setup_logging():
+    global inited
+
+    if inited:
+        return
     # Create logs directory if it doesn't exist
     os.makedirs('logs', exist_ok=True)
 
@@ -52,7 +57,7 @@ def setup_logging():
     logger.setLevel(logging.DEBUG)  # Set the logger to debug level
 
     rich_handler = RichHandler(console=console, rich_tracebacks=True, markup=True)
-    rich_handler.setLevel(logging.INFO)
+    rich_handler.setLevel(logging.DEBUG)
     logger.addHandler(rich_handler)
 
     # Create file handler which logs even debug messages
@@ -72,3 +77,5 @@ def setup_logging():
     # ch_formatter = logging.Formatter('%(levelname)s - %(message)s')
     # ch.setFormatter(ch_formatter)
     # logger.addHandler(ch)
+
+    inited = True
