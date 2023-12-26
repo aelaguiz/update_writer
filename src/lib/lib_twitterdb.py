@@ -58,6 +58,7 @@ def add_tweet(tweet_details):
     try:
         # Assuming tweet_details has 'id' and 'text' keys
         metadata = {
+            'type': 'tweet',
             'tweet_id': tweet_details['id'],
             'tweet_text': tweet_details['text']
         }

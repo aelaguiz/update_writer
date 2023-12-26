@@ -58,6 +58,7 @@ def add_email(email_details):
         timestamp = int(email_details['send_date'].timestamp())
 
         metadata = {
+            'type': 'email',
             'email_id': email_details['id'],
             'thread_id': email_details['threadId'],
             'from_address': email_details['from'],
