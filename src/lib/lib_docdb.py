@@ -3,6 +3,8 @@ from langchain.vectorstores import Chroma
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.chat_models import ChatOpenAI
 from langchain.vectorstores import Pinecone
+from tenacity import retry, stop_after_attempt, wait_fixed
+
 
 
 import pinecone
@@ -46,7 +48,6 @@ def get_docdb():
             api_key=os.getenv("PINECONE_API_KEY"),  # find at app.pinecone.io
             environment=os.getenv("PINECONE_ENV"),  # next to api key in console
         )
-        print(f"pinecone environment: {os.getenv('PINECONE_ENV')} {os.getenv('PINECONE_API_KEY')}")
 
         pinecone_index = pinecone.Index(os.getenv("PINECONE_INDEX_NAME"))
         docdb = Pinecone(pinecone_index, get_embedding_fn(), "text")
@@ -85,6 +86,10 @@ def get_email_ids():
             print(id, metadata)
             yield metadata['email_id']
 
+@retry(stop=stop_after_attempt(3), wait=wait_fixed(2))  # Retries up to 3 times with a 2-second wait between retries
+def add_texts_with_retry(docdb, texts, metadatas):
+    docdb.add_texts(texts, metadatas=metadatas)
+
 
 def add_email(email_details):
     docdb = get_docdb()
@@ -103,7 +108,58 @@ def add_email(email_details):
             'subject': email_details['subject'] if email_details['subject'] else '',
         }
         # logger.info(f"Metadata: {metadata}")
-        docdb.add_texts([email_details['original_message']], metadatas=[metadata])
+        add_texts_with_retry(docdb, [email_details['original_message']], [metadata])
     except Exception as e:
+        logger.error(f"Error loading document into db: {e}")
+        raise RuntimeError(f"Error loading document into db: {e}")
+
+def add_emails(email_details):
+    docdb = get_docdb()
+
+    logger = lib_logging.get_logger()
+    try:
+        texts = []
+        mds = []
+        for email in email_details:
+            try:
+                # print(email)
+                timestamp = int(email['send_date'].timestamp())
+
+                metadata = {
+                    'type': 'email',
+                    'email_id': email['id'],
+                    'thread_id': email['threadId'],
+                    'from_address': email['from'],
+                    'send_date': timestamp,
+                    'to_address': email['to'] if email['to'] else '',
+                    'subject': email['subject'] if email['subject'] else '',
+                }
+
+                texts.append(email['original_message'])
+                mds.append(metadata)
+            except Exception as e:
+                logger.error(f"Error setting metadata: {e}")
+                raise RuntimeError(f"Error setting metadata: {e}")
+
+        # logger.info(f"Metadata: {metadata}")
+        # logger.info(f"Adding {len(texts)} emails to db")
+        # logger.debug(len(texts))
+        # logger.debug(mds)
+        add_texts_with_retry(docdb, texts, mds)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        logger.error(f"Error loading document into db: {e}")
+        raise RuntimeError(f"Error loading document into db: {e}")
+
+def add_docs(docs):
+    logger = lib_logging.get_logger()
+    docdb = get_docdb()
+
+    try:
+        add_texts_with_retry(docdb, [d.page_content for d in docs], [d.metadata for d in docs])
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         logger.error(f"Error loading document into db: {e}")
         raise RuntimeError(f"Error loading document into db: {e}")

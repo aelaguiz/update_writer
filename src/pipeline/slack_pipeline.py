@@ -5,7 +5,7 @@ from ..lib.lib_logging import get_logger, get_run_logger, setup_logging, set_con
 
 from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 from ..lib import lib_gmail
-from ..lib import lib_emaildb
+from ..lib import lib_docdb
 
 dotenv.load_dotenv()
 setup_logging()
@@ -24,6 +24,7 @@ from langchain_core.documents import Document
 from langchain_community.document_loaders.base import BaseLoader
 from itertools import islice
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from tqdm import tqdm
 
 
 class SlackDirectoryLoader(BaseLoader):
@@ -154,18 +155,28 @@ class SlackDirectoryLoader(BaseLoader):
             return f"{channel_name} - {user} - {timestamp}"
 
 
-def process_and_load_document(doc, docdb):
-    """
-    Process and load a single document into the document database.
-    :param doc: The document to process and load.
-    :param docdb: The document database instance.
-    """
+def process_and_load_document(docs):
     try:
-        docdb.add_texts([doc.page_content], metadatas=[doc.metadata])
+        logger.debug(f"Processing and loading documents {docs}")
+        lib_docdb.add_docs(docs)
         return True
     except Exception as e:
         logger.error(f"Error loading document: {e}")
         return False
+
+def batch(iterable, size):
+    """
+    Split an iterable into batches of a specified size.
+    :param iterable: The iterable to split into batches.
+    :param size: The size of each batch.
+    :return: A generator yielding batches of the specified size.
+    """
+    iterator = iter(iterable)
+    while True:
+        batch = list(islice(iterator, size))
+        if not batch:
+            return
+        yield batch
 
 def load_slack_data(slack_zip_path, slack_workspace_url, max_workers=10):
     """
@@ -176,31 +187,44 @@ def load_slack_data(slack_zip_path, slack_workspace_url, max_workers=10):
     :return: None
     """
     try:
-        lib_emaildb.get_docdb()
         loader = SlackDirectoryLoader(slack_zip_path, slack_workspace_url)
         docs = loader.load()
 
-        docdb = lib_emaildb.get_docdb()
-
-        loaded_slacks = list(lib_emaildb.get_slack_ids())
+        # loaded_slacks = list(lib_emaildb.get_slack_ids())
+        loaded_slacks = []
         logger.info("Starting to load Slack documents into the database.")
 
-        batch_size = 1
+        batch_size = 50
         ready_docs = [doc for doc in docs if doc.metadata['slack_id'] not in loaded_slacks]
 
-        with ThreadPoolExecutor(max_workers=max_workers) as executor, tqdm(total=len(ready_docs)) as pbar:
-            futures = []
-            for doc in ready_docs:
-                future = executor.submit(process_and_load_document, doc, docdb)
-                futures.append(future)
+        success_count = 0
+        failure_count = 0
 
-            for future in as_completed(futures):
-                result = future.result()
-                if not result:
-                    logger.error("Error loading Slack document into the database.")
-                pbar.update(1)
+        for idx, batch_docs in enumerate(tqdm(batch(ready_docs, batch_size), total=len(ready_docs)//batch_size)):
+            logger.info(f"Processing batch {idx} {batch_size} documents")
+            result = process_and_load_document(batch_docs)
+            if result:
+                success_count += 1
+            else:
+                failure_count += 1
+
+        # with ThreadPoolExecutor(max_workers=max_workers) as executor, tqdm(total=len(ready_docs)) as pbar:
+        #     futures = []
+        #     for batch_docs in batch(ready_docs, batch_size):
+        #         future = executor.submit(process_and_load_document, batch_docs)
+        #         futures.append(future)
+
+        #     for future in as_completed(futures):
+        #         result = future.result()
+        #         if result:
+        #             success_count += 1
+        #         else:
+        #             failure_count += 1
+        #         pbar.update(batch_size)
 
         logger.info("Completed loading Slack documents into the database.")
+        logger.info(f"Successful loads: {success_count} representing {success_count * batch_size} documents (% of total: {success_count / len(ready_docs) * 100.0})")
+        logger.info(f"Failed loads: {failure_count} representing {failure_count * batch_size} documents (% of total: {failure_count / len(ready_docs) * 100.0})")
 
     except Exception as e:
         logger.error(f"Error loading Slack data: {e}")
@@ -211,7 +235,7 @@ if __name__ == "__main__":
         logger.error("Usage: python script.py <path_to_slack_zip> <slack_workspace_url>")
         sys.exit(1)
 
-    lib_emaildb.set_company_environment("CJ")
+    lib_docdb.set_company_environment("CJ")
 
     slack_zip_path = sys.argv[1]
     slack_workspace_url = sys.argv[2]

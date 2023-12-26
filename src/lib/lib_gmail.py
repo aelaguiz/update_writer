@@ -11,16 +11,23 @@ from bs4 import BeautifulSoup
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
-from .simple_cache import pickle_cache
 
 from . import lib_logging
 
 logger = lib_logging.get_logger()
 
+from diskcache import Cache
+
+# Setup cache directory
+cache = Cache('./cache')
+
 # If modifying these SCOPES, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
+_service = None
+
 def gmail_authenticate(app_id):
+    global _service
     creds_file = os.getenv(f"{app_id}_SECRET")
     creds = None
     # The file token.pickle stores the user's access and refresh tokens.
@@ -37,13 +44,15 @@ def gmail_authenticate(app_id):
         # Save the credentials for the next run
         with open(f'{app_id}_token.pickle', 'wb') as token:
             pickle.dump(creds, token)
-    return build('gmail', 'v1', credentials=creds)
 
-@pickle_cache
-def list_messages(service, user_id, query='', batch_size=100):
+    _service = build('gmail', 'v1', credentials=creds)
+
+@cache.memoize()
+def list_messages(user_id, query='', batch_size=100):
+    global _service
     try:
         logger.debug(f'Listing messages with query: {query}')
-        response = service.users().messages().list(userId=user_id, q=query, maxResults=batch_size).execute()
+        response = _service.users().messages().list(userId=user_id, q=query, maxResults=batch_size).execute()
         messages = []
         if 'messages' in response:
             messages.extend(response['messages'])
@@ -51,7 +60,7 @@ def list_messages(service, user_id, query='', batch_size=100):
         # Check if the number of messages is already at or above the batch size
         while 'nextPageToken' in response and len(messages) < batch_size:
             page_token = response['nextPageToken']
-            response = service.users().messages().list(userId=user_id, q=query, pageToken=page_token, maxResults=batch_size).execute()
+            response = _service.users().messages().list(userId=user_id, q=query, pageToken=page_token, maxResults=batch_size).execute()
             messages.extend(response['messages'])
             # Reduce the number of messages to the batch size if it exceeds
             if len(messages) > batch_size:
@@ -129,10 +138,11 @@ def parse_out_original_message(email_content):
 
     return email_content
 
-@pickle_cache
-def get_message(service, user_id, msg_id):
+@cache.memoize()
+def get_message(user_id, msg_id):
+    global _service
     try:
-        message = service.users().messages().get(userId=user_id, id=msg_id, format='raw').execute()
+        message = _service.users().messages().get(userId=user_id, id=msg_id, format='raw').execute()
         # print(f'Message snippet: {message["snippet"]}')
         return message
     except Exception as error:
