@@ -23,6 +23,7 @@ from langchain_core.documents import Document
 
 from langchain_community.document_loaders.base import BaseLoader
 from itertools import islice
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 class SlackDirectoryLoader(BaseLoader):
@@ -185,24 +186,19 @@ def load_slack_data(slack_zip_path, slack_workspace_url, max_workers=10):
         logger.info("Starting to load Slack documents into the database.")
 
         batch_size = 1
-        ready_docs = [doc for doc in docs if doc.metadata['slack_id'] not in loaded_slacks][:100]
+        ready_docs = [doc for doc in docs if doc.metadata['slack_id'] not in loaded_slacks]
 
-        ready_docs_iter = iter(ready_docs)
-        while True:
-            batch_docs = list(islice(ready_docs_iter, batch_size))
-            if not batch_docs:
-                break
-            logger.info(f"Loading {len(batch_docs)} Slack documents into the database. {[doc.page_content for doc in batch_docs]} {[doc.metadata for doc in batch_docs]}")
-            docdb.add_texts([doc.page_content for doc in batch_docs], metadatas=[doc.metadata for doc in batch_docs])
-        # for doc in docs:
-        #     if doc.metadata['slack_id'] not in loaded_slacks:
-        #         success = process_and_load_document(doc, docdb)
-        #         if success:
-        #             logger.debug(f"Successfully loaded document: {doc.metadata.get('source', 'Unknown source')}")
-        #         else:
-        #             logger.error(f"Failed to load document: {doc.metadata.get('source', 'Unknown source')}")
-        #     else:
-        #         logger.debug(f"Skipping document already loaded: {doc.metadata.get('source', 'Unknown source')}")
+        with ThreadPoolExecutor(max_workers=max_workers) as executor, tqdm(total=len(ready_docs)) as pbar:
+            futures = []
+            for doc in ready_docs:
+                future = executor.submit(process_and_load_document, doc, docdb)
+                futures.append(future)
+
+            for future in as_completed(futures):
+                result = future.result()
+                if not result:
+                    logger.error("Error loading Slack document into the database.")
+                pbar.update(1)
 
         logger.info("Completed loading Slack documents into the database.")
 
@@ -219,4 +215,5 @@ if __name__ == "__main__":
 
     slack_zip_path = sys.argv[1]
     slack_workspace_url = sys.argv[2]
-    load_slack_data(slack_zip_path, slack_workspace_url, 1)
+    nworkers = int(sys.argv[3])
+    load_slack_data(slack_zip_path, slack_workspace_url, nworkers)

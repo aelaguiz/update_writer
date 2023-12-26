@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
+from .simple_cache import pickle_cache
 
 from . import lib_logging
 
@@ -38,6 +39,7 @@ def gmail_authenticate(app_id):
             pickle.dump(creds, token)
     return build('gmail', 'v1', credentials=creds)
 
+@pickle_cache
 def list_messages(service, user_id, query='', batch_size=100):
     try:
         logger.debug(f'Listing messages with query: {query}')
@@ -77,9 +79,9 @@ def parse_subject_body(message):
 
         # Extract subject, from, and to addresses
         subject = email_message.get('subject', '')
-        from_address = email_message['from']
-        to_address = email_message['to']
-        date_string = email_message['date']
+        from_address = email_message.get('from', '')
+        to_address = email_message.get('to', '')
+        date_string = email_message.get('date', '')
 
         if date_string:
             send_date = parsedate_to_datetime(date_string)
@@ -127,6 +129,7 @@ def parse_out_original_message(email_content):
 
     return email_content
 
+@pickle_cache
 def get_message(service, user_id, msg_id):
     try:
         message = service.users().messages().get(userId=user_id, id=msg_id, format='raw').execute()

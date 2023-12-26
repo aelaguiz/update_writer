@@ -14,7 +14,7 @@ COMPANY_ENV = None
 def get_gmail_messages(loaded_email_ids):
     service = lib_gmail.gmail_authenticate(COMPANY_ENV)
     logger.info(f"Getting emails sent from me")
-    emails_sent = lib_gmail.list_messages(service, 'me', query='from:me', batch_size=15000)
+    emails_sent = lib_gmail.list_messages(service, 'me', query='from:me', batch_size=50000)
 
     emails = []
     for email in emails_sent:
@@ -55,7 +55,8 @@ def load_emails(email_details):
 
 
 def gmail_pipeline(nworkers):
-    loaded_email_ids = list(lib_emaildb.get_email_ids())
+    loaded_email_ids = []
+    # list(lib_emaildb.get_email_ids())
     emails = get_gmail_messages(loaded_email_ids)
 
     with ThreadPoolExecutor(max_workers=nworkers) as executor:

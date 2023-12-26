@@ -2,11 +2,15 @@ import os
 from langchain.vectorstores import Chroma
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.chat_models import ChatOpenAI
+from langchain.vectorstores import Pinecone
 
+
+import pinecone
 from . import lib_logging
 
 docdb = None
 llm = None
+pinecone_index = None
 
 OPENAI_MODEL = os.getenv("OPENAI_MODEL")
 EMAILDB_PATH = None
@@ -34,28 +38,47 @@ def get_llm():
 
 def get_docdb():
     global docdb
+    global pinecone_index
 
     if not docdb:
-        docdb = Chroma(embedding_function=get_embedding_fn(), persist_directory=EMAILDB_PATH)
+        # initialize pinecone
+        pinecone.init(
+            api_key=os.getenv("PINECONE_API_KEY"),  # find at app.pinecone.io
+            environment=os.getenv("PINECONE_ENV"),  # next to api key in console
+        )
+        print(f"pinecone environment: {os.getenv('PINECONE_ENV')} {os.getenv('PINECONE_API_KEY')}")
+
+        pinecone_index = pinecone.Index(os.getenv("PINECONE_INDEX_NAME"))
+        docdb = Pinecone(pinecone_index, get_embedding_fn(), "text")
+
 
     return docdb
 
 def get_slack_ids():
     # filter": {"type": {"$eq": "website"}}})
 
-    docdb = get_docdb()
+    # global pinecone_index
 
-    res = docdb.get(include=['metadatas'], )
-    for id, metadata in zip(res['ids'], res['metadatas']):
-        if metadata.get('type') == 'slack':
-            print(id, metadata)
-            yield metadata['slack_id']
+    # max_vectors = 1000  # Replace with the actual or estimated number of vectors
+    # vector_ids = [i["id"] for i in pinecone_index.fetch_metadata(page_size=max_vectors)["results"]]
+
+    # # Fetching all documents using the IDs
+    # documents = [pinecone_index.fetch(id=v_id) for v_id in vector_ids]
+    # print(documents)
+
+
+    return []
+
+    # res = docdb.get(include=['metadatas'], )
+    # for id, metadata in zip(res['ids'], res['metadatas']):
+    #     if metadata.get('type') == 'slack':
+    #         print(id, metadata)
+    #         yield metadata['slack_id']
 
 def get_email_ids():
     # filter": {"type": {"$eq": "website"}}})
 
     docdb = get_docdb()
-
     res = docdb.get(include=['metadatas'])
     for id, metadata in zip(res['ids'], res['metadatas']):
         if metadata.get('type') == 'email':
@@ -64,6 +87,8 @@ def get_email_ids():
 
 
 def add_email(email_details):
+    docdb = get_docdb()
+
     logger = lib_logging.get_logger()
     try:
         timestamp = int(email_details['send_date'].timestamp())
@@ -80,5 +105,5 @@ def add_email(email_details):
         # logger.info(f"Metadata: {metadata}")
         docdb.add_texts([email_details['original_message']], metadatas=[metadata])
     except Exception as e:
-        logger.error(f"Error loading document into Chroma: {e}")
-        raise RuntimeError(f"Error loading document into Chroma: {e}")
+        logger.error(f"Error loading document into db: {e}")
+        raise RuntimeError(f"Error loading document into db: {e}")
