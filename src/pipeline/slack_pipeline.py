@@ -22,6 +22,7 @@ from tqdm import tqdm
 from langchain_core.documents import Document
 
 from langchain_community.document_loaders.base import BaseLoader
+from itertools import islice
 
 
 class SlackDirectoryLoader(BaseLoader):
@@ -114,6 +115,7 @@ class SlackDirectoryLoader(BaseLoader):
         source = self._get_message_source(channel_name, user, timestamp)
         return {
             "source": source,
+            "slack_id": message.get("client_msg_id", ""),
             "channel": channel_name,
             "timestamp": timestamp,
             "user": user,
@@ -178,21 +180,29 @@ def load_slack_data(slack_zip_path, slack_workspace_url, max_workers=10):
         docs = loader.load()
 
         docdb = lib_emaildb.get_docdb()
+
+        loaded_slacks = list(lib_emaildb.get_slack_ids())
         logger.info("Starting to load Slack documents into the database.")
 
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            future_to_doc = {executor.submit(process_and_load_document, doc, docdb): doc for doc in docs}
+        batch_size = 1
+        ready_docs = [doc for doc in docs if doc.metadata['slack_id'] not in loaded_slacks][:100]
 
-            for future in tqdm(as_completed(future_to_doc), total=len(docs), desc="Loading Slack Documents"):
-                doc = future_to_doc[future]
-                try:
-                    success = future.result()
-                    if success:
-                        logger.debug(f"Successfully loaded document: {doc.metadata.get('source', 'Unknown source')}")
-                    else:
-                        logger.error(f"Failed to load document: {doc.metadata.get('source', 'Unknown source')}")
-                except Exception as e:
-                    logger.error(f"Error in processing/loading thread: {e}")
+        ready_docs_iter = iter(ready_docs)
+        while True:
+            batch_docs = list(islice(ready_docs_iter, batch_size))
+            if not batch_docs:
+                break
+            logger.info(f"Loading {len(batch_docs)} Slack documents into the database. {[doc.page_content for doc in batch_docs]} {[doc.metadata for doc in batch_docs]}")
+            docdb.add_texts([doc.page_content for doc in batch_docs], metadatas=[doc.metadata for doc in batch_docs])
+        # for doc in docs:
+        #     if doc.metadata['slack_id'] not in loaded_slacks:
+        #         success = process_and_load_document(doc, docdb)
+        #         if success:
+        #             logger.debug(f"Successfully loaded document: {doc.metadata.get('source', 'Unknown source')}")
+        #         else:
+        #             logger.error(f"Failed to load document: {doc.metadata.get('source', 'Unknown source')}")
+        #     else:
+        #         logger.debug(f"Skipping document already loaded: {doc.metadata.get('source', 'Unknown source')}")
 
         logger.info("Completed loading Slack documents into the database.")
 
@@ -209,4 +219,4 @@ if __name__ == "__main__":
 
     slack_zip_path = sys.argv[1]
     slack_workspace_url = sys.argv[2]
-    load_slack_data(slack_zip_path, slack_workspace_url, 4)
+    load_slack_data(slack_zip_path, slack_workspace_url, 1)

@@ -40,6 +40,16 @@ def get_docdb():
 
     return docdb
 
+def get_slack_ids():
+    # filter": {"type": {"$eq": "website"}}})
+
+    docdb = get_docdb()
+
+    res = docdb.get(include=['metadatas'], )
+    for id, metadata in zip(res['ids'], res['metadatas']):
+        if metadata.get('type') == 'slack':
+            print(id, metadata)
+            yield metadata['slack_id']
 
 def get_email_ids():
     # filter": {"type": {"$eq": "website"}}})
@@ -48,8 +58,9 @@ def get_email_ids():
 
     res = docdb.get(include=['metadatas'])
     for id, metadata in zip(res['ids'], res['metadatas']):
-        print(id, metadata)
-        yield metadata['email_id']
+        if metadata.get('type') == 'email':
+            print(id, metadata)
+            yield metadata['email_id']
 
 
 def add_email(email_details):
