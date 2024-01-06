@@ -1,5 +1,5 @@
 import logging
-from src.lib import lib_emaildb
+from src.lib import lib_docdb
 from src.lib import lib_logging
 import argparse
 from prompt_toolkit import prompt
@@ -98,8 +98,8 @@ metadata_field_info = [
 
 
 def write_email(message_type, notes):
-    db = lib_emaildb.get_docdb()
-    llm = lib_emaildb.get_llm()
+    db = lib_docdb.get_docdb()
+    llm = lib_docdb.get_llm()
 
     email_retriever = SelfQueryRetriever.from_llm(
         llm,
@@ -169,5 +169,5 @@ if __name__ == "__main__":
     parser.add_argument('company', choices=['cj', 'fc'], help='Specify the company environment ("cj" or "fc").')
     args = parser.parse_args()
 
-    lib_emaildb.set_company_environment(args.company.upper())
+    lib_docdb.set_company_environment(args.company.upper())
     main()
