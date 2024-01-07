@@ -15,7 +15,7 @@ COMPANY_ENV = None
 def get_gmail_messages(loaded_email_ids):
     lib_gmail.gmail_authenticate(COMPANY_ENV)
     logger.info(f"Getting emails sent from me")
-    emails_sent = lib_gmail.list_messages('me', query='from:me', batch_size=15000)
+    emails_sent = lib_gmail.list_messages('me', query='from:me', batch_size=5000)
 
     emails = []
     for email in emails_sent:
@@ -77,7 +77,7 @@ def gmail_pipeline(nworkers):
     emails = get_gmail_messages(loaded_email_ids)
 
     # Split emails into batches of size 5
-    batch_size = 5
+    batch_size = 25
     email_batches = list(batch(emails, batch_size))
 
     succeeded = 0

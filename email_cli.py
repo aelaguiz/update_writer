@@ -1,5 +1,5 @@
 import logging
-from src.lib import lib_emaildb
+from src.lib import lib_docdb
 from src.lib import lib_logging
 from prompt_toolkit import prompt
 from prompt_toolkit.key_binding import KeyBindings
@@ -11,7 +11,7 @@ from prompt_toolkit.keys import Keys
 # lib_logging.set_console_logging_level(logging.ERROR)
 # logger = lib_logging.get_logger(logging.ERROR)
 
-db = lib_emaildb.get_docdb()
+db = lib_docdb.get_docdb()
 
 def print_email_doc(page_content, metadata):
     # Extracting metadata

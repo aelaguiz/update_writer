@@ -130,7 +130,8 @@ class SlackDirectoryLoader(BaseLoader):
             "name": name,
             "is_restricted": is_restricted,
             "is_ultra_restricted": is_ultra_restricted,
-            'type': 'slack'
+            'type': 'slack',
+            'source': 'slack'
         }
 
     def _get_message_source(self, channel_name: str, user: str, timestamp: str) -> str:

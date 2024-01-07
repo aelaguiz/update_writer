@@ -1,5 +1,5 @@
 import logging
-from src.lib import lib_emaildb
+from src.lib import lib_docdb
 from src.lib import lib_logging
 from prompt_toolkit import prompt
 from prompt_toolkit.key_binding import KeyBindings
@@ -8,14 +8,16 @@ from langchain.prompts import SystemMessagePromptTemplate, HumanMessagePromptTem
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
+from operator import itemgetter
 
 # lib_logging.setup_logging()
 
 # lib_logging.set_console_logging_level(logging.ERROR)
 # logger = lib_logging.get_logger(logging.ERROR)
 
-db = lib_emaildb.get_docdb()
-llm = lib_emaildb.get_llm()
+db = lib_docdb.get_docdb()
+llm = lib_docdb.get_llm()
+retriever = db.as_retriever()
 
 def format_email_docs(docs):
     return "\n\n".join([format_email_doc(doc) for doc in docs])
@@ -99,13 +101,14 @@ metadata_field_info = [
     # Additional fields can be added here if needed
 ]
 
-llm = ChatOpenAI(temperature=0)
-email_retriever = SelfQueryRetriever.from_llm(
-    llm,
-    db,
-    "E-mails sent by me",
-    metadata_field_info,
-)
+# llm = ChatOpenAI(temperature=0)
+# email_retriever = 
+# SelfQueryRetriever.from_llm(
+#     llm,
+#     db,
+#     "E-mails sent by me",
+#     metadata_field_info,
+# )
 
 
 
@@ -136,7 +139,7 @@ def write_email(input):
 
     chain = (
         {
-            "emails": email_retriever | format_email_docs,
+            "emails": itemgetter("notes")  | retriever | format_email_docs,
             "notes": RunnablePassthrough()
         }
         | write_prompt
