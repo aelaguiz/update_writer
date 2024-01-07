@@ -8,6 +8,7 @@ from langchain.indexes import SQLRecordManager, index
 from langchain.cache import SQLiteCache
 from langchain.vectorstores.pgvector import PGVector
 from langchain_core.documents import Document
+from langchain.globals import set_llm_cache
 import httpx
 
 
@@ -26,6 +27,8 @@ EMAILDB_PATH = None
 OPENAI_TEMPERATURE = float(os.getenv("OPENAI_TEMPERATURE"))
 
 COMPANY_ENV = None
+
+set_llm_cache(SQLiteCache(database_path=".langchain.db"))
 
 def set_company_environment(company_env):
     global COMPANY_ENV
@@ -64,8 +67,9 @@ def get_docdb():
 
     if not docdb:
         db_collection_name = "amirdocs"
-        db_connection_string = os.getenv("DOCDB_DATABASE")
-        record_manager_connection_string = os.getenv("RECORDMANAGER_DATABASE")
+
+        db_connection_string = os.getenv(f"{COMPANY_ENV}_DOCDB_DATABASE")
+        record_manager_connection_string = os.getenv(f"{COMPANY_ENV}_RECORDMANAGER_DATABASE")
 
         docdb = PGVector(
             embedding_function=get_embedding_fn(),

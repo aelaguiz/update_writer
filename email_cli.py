@@ -1,5 +1,6 @@
 import logging
 from src.lib import lib_docdb
+import argparse
 from src.lib import lib_logging
 from prompt_toolkit import prompt
 from prompt_toolkit.key_binding import KeyBindings
@@ -11,9 +12,10 @@ from prompt_toolkit.keys import Keys
 # lib_logging.set_console_logging_level(logging.ERROR)
 # logger = lib_logging.get_logger(logging.ERROR)
 
-db = lib_docdb.get_docdb()
-
 def print_email_doc(page_content, metadata):
+    print(page_content)
+    print(metadata)
+    return
     # Extracting metadata
     email_id = metadata.get('email_id', 'N/A')
     from_address = metadata.get('from_address', 'N/A')
@@ -35,10 +37,13 @@ def print_email_doc(page_content, metadata):
 
 
 def process_command(input):
+    db = lib_docdb.get_docdb()
+
     print(f"Processing: {input}")
 
-    docs = db.similarity_search(input, k=5)
-    for doc in docs:
+    docs = db.similarity_search_with_relevance_scores(input, k=50)
+    for doc, score in docs:
+        print(f"Score {score}")
         print_email_doc(doc.page_content, doc.metadata)
 
     # res = chain.invoke(input, config={
@@ -78,4 +83,11 @@ def main():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Run the Gmail pipeline for a specific company.')
+    parser.add_argument('company', choices=['cj', 'fc'], help='Specify the company environment ("cj" or "fc").')
+    args = parser.parse_args()
+
+    lib_docdb.set_company_environment(args.company.upper())
+
+
     main()
