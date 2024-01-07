@@ -8,6 +8,7 @@ from langchain.indexes import SQLRecordManager, index
 from langchain.cache import SQLiteCache
 from langchain.vectorstores.pgvector import PGVector
 from langchain_core.documents import Document
+import httpx
 
 
 
@@ -18,6 +19,7 @@ docdb = None
 llm = None
 pinecone_index = None
 _record_manager = None
+_json_llm = None
 
 OPENAI_MODEL = os.getenv("OPENAI_MODEL")
 EMAILDB_PATH = None
@@ -42,6 +44,18 @@ def get_llm():
         llm = ChatOpenAI(model_name=OPENAI_MODEL, temperature=OPENAI_TEMPERATURE)
 
     return llm
+
+def get_json_llm():
+    global _json_llm 
+
+    if not _json_llm:
+        _json_llm = ChatOpenAI(model_name=OPENAI_MODEL, temperature=OPENAI_TEMPERATURE, timeout=httpx.Timeout(15.0, read=60.0, write=10.0, connect=3.0), max_retries=0).bind(
+            response_format= {
+                "type": "json_object"
+            }
+        )
+
+    return _json_llm
 
 def get_docdb():
     global docdb
@@ -165,9 +179,17 @@ def add_emails(email_details):
 def add_docs(docs):
     logger = lib_logging.get_logger()
     docdb = get_docdb()
+    global _record_manager
 
     try:
-        add_texts_with_retry(docdb, [d.page_content for d in docs], [d.metadata for d in docs])
+        logger.debug(f"Adding {len(docs)} docs to index")
+        res = index(
+            docs,
+            _record_manager,
+            docdb,
+            cleanup=None,
+            source_id_key="source"
+        )
     except Exception as e:
         import traceback
         traceback.print_exc()
