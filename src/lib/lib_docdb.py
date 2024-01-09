@@ -80,7 +80,7 @@ def get_docdb():
         db_connection_string = os.getenv(f"{COMPANY_ENV}_DOCDB_DATABASE")
         record_manager_connection_string = os.getenv(f"{COMPANY_ENV}_RECORDMANAGER_DATABASE")
 
-        logger.info(f"Connecting to docdb: {db_connection_string} and record manager: {record_manager_connection_string}")
+        logger.debug(f"Connecting to docdb: {db_connection_string} and record manager: {record_manager_connection_string}")
 
         docdb = PGVector(
             embedding_function=get_embedding_fn(),

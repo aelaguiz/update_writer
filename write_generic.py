@@ -1,26 +1,20 @@
-import logging
-from src.lib import lib_docdb
-from src.lib import lib_logging
 import argparse
+import uuid
+import os
+from halo import Halo
 from prompt_toolkit import prompt
 from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.keys import Keys
-from langchain.prompts import SystemMessagePromptTemplate, HumanMessagePromptTemplate
-from langchain.prompts import ChatPromptTemplate
+from src.lib import lib_docdb, lib_logging, lc_logger
+from langchain.memory import ConversationBufferMemory
+from langchain.memory.chat_message_histories.in_memory import ChatMessageHistory
+from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder
 from langchain.schema import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
-from src.lib.lc_logger import LlmDebugHandler
+from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from operator import itemgetter
 from src.util import doc_formatters
-from langchain.memory import ConversationBufferMemory
-from langchain.prompts import ChatPromptTemplate
-from langchain.memory.chat_message_histories.in_memory import ChatMessageHistory
-from langchain_core.runnables import RunnableLambda, RunnablePassthrough
-from langchain.prompts import MessagesPlaceholder
+from src.util import prompts
 
 lib_logging.setup_logging()
-
-# lib_logger.set_console_logging_level(logger.ERROR)
 logger = lib_logging.get_logger()
 
 lmd = None
@@ -29,136 +23,116 @@ llm = None
 retriever = None
 chat_history = None
 memory = None
+conversation_file = None
 
-def init():
-    global lmd
-    global db
-    global llm
-    global retriever
-    global chat_history
-    global memory
+def init(company):
+    global lmd, db, llm, retriever, chat_history, memory, conversation_file
 
-    lmd = LlmDebugHandler()
+    lmd = lc_logger.LlmDebugHandler()  
     db = lib_docdb.get_docdb()
     llm = lib_docdb.get_llm()
     retriever = db.as_retriever()
     chat_history = ChatMessageHistory()
     memory = ConversationBufferMemory(chat_memory=chat_history, input_key="input", output_key="output", return_messages=True)
 
-def write_message(message_type, notes):
-    global lmd
-    global db
-    global llm
-    global retriever
-    global chat_history
-    global memory
+    # Unique file name for conversation history
+    conversation_file_name = f"conversation_{company}_{uuid.uuid4()}.txt"
+    conversation_file = os.path.join("conversations", conversation_file_name)
+    os.makedirs(os.path.dirname(conversation_file), exist_ok=True)
+    print(f"Conversation will be saved in: {conversation_file}")
 
-    print(f"Message type: {message_type} notes: {notes}")
-    write_prompt = ChatPromptTemplate.from_template("""# Write a {message_type}
+def save_conversation(input_text, output_text):
+    with open(conversation_file, "a") as file:
+        file.write(f"User: {input_text}\n\nAI: {output_text}\n\n---------------------------------------------------")
 
-## Instructions
-- Create a {message_type} focused on the provided content.
-- Use a style and tone consistent with the medium of the {message_type}.
-- Maintain a candid and casual tone, avoiding expressions of exaggerated enthusiasm (e.g., 'thrilled', 'excited').
-- Minimize the use of exclamations.
-- Avoid statements that imply grandiosity or hype, such as 'we're onto something big.'
-- Do not include motivational or team-building statements, especially in the closing.
-- Notes for content can be transcribed audio, a collection of random notes, or any combination thereof, not necessarily in a specific order.
+def create_chain(prompt_template, input_obj):
+    loaded_memory = RunnablePassthrough.assign(history=RunnableLambda(memory.load_memory_variables) | itemgetter("history"))
 
-## Section 1: Tone and Style Examples
-{emails}
-
-## Section 2: Content
-{notes}
-""")
-    loaded_memory = RunnablePassthrough.assign(
-        history=RunnableLambda(memory.load_memory_variables) | itemgetter("history"),
+    return (
+        loaded_memory
+        | input_obj 
+        | prompt_template
+        | llm 
+        | StrOutputParser()
     )
 
-    chain = (
-        loaded_memory
-        | {
+def initialize_spinner():
+    return Halo(text='Thinking...', spinner='dots')
+
+def write_message(message_type, notes):
+    write_prompt = ChatPromptTemplate.from_template(prompts.write_generic_message_prompt)
+    chain = create_chain(
+        write_prompt, 
+        {
             "emails": itemgetter("notes")  | retriever | doc_formatters.retriever_format_docs,
             "message_type": lambda x: x['message_type'],
             "notes": lambda x: x['notes'],
             "history": lambda x: x['history']
         }
-        | write_prompt
-        | llm 
-        | StrOutputParser()
     )
+    spinner = initialize_spinner()
 
+    spinner.start()
+    res = chain.invoke({'message_type': message_type, 'notes': notes}, config={'callbacks': [lmd]})
+    spinner.stop()
 
-    res = chain.invoke({
-        'message_type': message_type,
-        'notes': notes
-    }, config={'callbacks': [lmd]})
+    fmted_prompt = write_prompt.format(**{
+        "emails": doc_formatters.retriever_format_docs(retriever.get_relevant_documents(notes)),
+        "message_type": message_type,
+        "notes": notes,
+        "history": memory.load_memory_variables(None)["history"]
+    })
+    print(fmted_prompt)
+    memory.save_context({"input": fmted_prompt}, {"output": res})
+    save_conversation(fmted_prompt, res)
 
-    memory.save_context({
-        "input": message_type + ": " + notes
-    }, {"output": res})
-
-    print(f"Result: '{res}'")
+    print(f"AI: {res}")
 
 def refine_message(feedback):
-    global lmd
-    global db
-    global llm
-    global retriever
-    global chat_history
-    global memory
-
     refine_prompts = ChatPromptTemplate.from_messages([
-        SystemMessagePromptTemplate.from_template("""
-        You have composed a message based on user input and retrieved documents. The user has provided feedback on the previous message. Please refine the message based on the feedback.
+        SystemMessagePromptTemplate.from_template(prompts.refine_generic_message_prompt), 
+        MessagesPlaceholder(variable_name="history"), 
+        HumanMessagePromptTemplate.from_template("{feedback}")])  # Simplified for brevity
 
-        **History**"""),
-        MessagesPlaceholder(variable_name="history"),
-        HumanMessagePromptTemplate.from_template("{feedback}")
-    ])
-
-
-    loaded_memory = RunnablePassthrough.assign(
-        history=RunnableLambda(memory.load_memory_variables) | itemgetter("history"),
-    )
-
-    logger.debug(f"Refining message: {feedback} with memory {memory.chat_memory}")
-
-    chain = (
-        loaded_memory
-        | {
+    chain = create_chain(
+        refine_prompts,
+        {
             "history": lambda x: x['history'],
-            "feedback": lambda x: x['feedback'],
+            "feedback": lambda x: x['feedback']
         }
-        | refine_prompts
-        | llm 
-        | StrOutputParser()
     )
+    spinner = initialize_spinner()
 
+    spinner.start()
+    res = chain.invoke({'feedback': feedback}, config={'callbacks': [lmd]})
+    spinner.stop()
 
-    res = chain.invoke({
-        'feedback': feedback
-    }, config={'callbacks': [lmd]})
+    fmted_prompt = refine_prompts.format(**{
+        "history": memory.load_memory_variables(None)["history"],
+        "feedback": feedback
+    })
+    memory.save_context({"input": fmted_prompt}, {"output": res})
+    save_conversation(fmted_prompt, res)
 
-    memory.save_context({
-        "input": f"Refine: {feedback}"
-    }, {"output": res})
-
-    print(f"Result: '{res}'")
-
+    print(f"AI: {res}")
 
 def main():
     bindings = KeyBindings()
-
-    message_type = prompt('What are you writing? ("quit" to exit, Ctrl-D to end): ', key_bindings=bindings)
-    # Multiline input modkwe
-    notes = prompt('Enter notes: ', multiline=True, key_bindings=bindings)
-    write_message(message_type.strip(), notes.strip())
+    print('quit to exit, Ctrl-D to end, """ for multiline')
+    message_type = prompt('What are you writing? ', key_bindings=bindings).strip()
+    if message_type.lower() == 'quit':
+        return
+    notes = prompt('Provide any notes or context: ', multiline=True, key_bindings=bindings).strip()
+    write_message(message_type, notes)
 
     while True:
         try:
-            feedback = prompt('How should we refine this? ("quit" to exit, Ctrl-D to end): ', key_bindings=bindings)
-            refine_message(feedback.strip())
+            line = prompt('What is your feedback? ', key_bindings=bindings).strip()
+            if line == '"""':
+                line = prompt('... ', multiline=True, key_bindings=bindings).strip()
+            if line.lower() == 'quit':
+                return
+            refine_message(line)
         except EOFError:
             return
             
@@ -169,5 +143,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     lib_docdb.set_company_environment(args.company.upper())
-    init()
+    init(args.company)
     main()
+    print(f"Reminder: Your conversation has been saved in {conversation_file}")
