@@ -4,7 +4,7 @@ from tqdm import tqdm
 
 from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 from itertools import islice
-from ..lib import lib_gmail
+from ..lib import lib_gdrive
 from ..lib import lib_docdb
 
 dotenv.load_dotenv()
@@ -13,9 +13,9 @@ logger = get_logger()
 COMPANY_ENV = None
 
 def get_gmail_messages(loaded_email_ids):
-    lib_gmail.gmail_authenticate(COMPANY_ENV)
+    lib_gdrive.gmail_authenticate(COMPANY_ENV)
     logger.info(f"Getting emails sent from me")
-    emails_sent = lib_gmail.list_messages('me', query='from:me', batch_size=5000)
+    emails_sent = lib_gdrive.list_messages('me', query='from:me', batch_size=5000)
 
     emails = []
     for email in emails_sent:
@@ -26,14 +26,14 @@ def get_gmail_messages(loaded_email_ids):
 
 def get_message_details(email):
     try:
-        lib_gmail.gmail_authenticate(COMPANY_ENV)
-        details = lib_gmail.get_message('me', email['id'])
+        lib_gdrive.gmail_authenticate(COMPANY_ENV)
+        details = lib_gdrive.get_message('me', email['id'])
     except Exception as e:
         logger.error(f"Error getting message details: {e} {type(e)}")
         raise e
 
     try:
-        subject, body, from_address, to_address, send_date, original_message = lib_gmail.parse_subject_body(details)
+        subject, body, from_address, to_address, send_date, original_message = lib_gdrive.parse_subject_body(details)
     except Exception as e:
         logger.error(f"Error parsing subject body: {e} {type(e)}")
         raise e

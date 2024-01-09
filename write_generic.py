@@ -12,18 +12,46 @@ from langchain_core.runnables import RunnablePassthrough
 from src.lib.lc_logger import LlmDebugHandler
 from operator import itemgetter
 from src.util import doc_formatters
+from langchain.memory import ConversationBufferMemory
+from langchain.prompts import ChatPromptTemplate
+from langchain.memory.chat_message_histories.in_memory import ChatMessageHistory
+from langchain_core.runnables import RunnableLambda, RunnablePassthrough
+from langchain.prompts import MessagesPlaceholder
 
 lib_logging.setup_logging()
 
 # lib_logger.set_console_logging_level(logger.ERROR)
 logger = lib_logging.get_logger()
 
+lmd = None
+db = None
+llm = None
+retriever = None
+chat_history = None
+memory = None
 
-def write_email(message_type, notes):
+def init():
+    global lmd
+    global db
+    global llm
+    global retriever
+    global chat_history
+    global memory
+
     lmd = LlmDebugHandler()
     db = lib_docdb.get_docdb()
     llm = lib_docdb.get_llm()
     retriever = db.as_retriever()
+    chat_history = ChatMessageHistory()
+    memory = ConversationBufferMemory(chat_memory=chat_history, input_key="input", output_key="output", return_messages=True)
+
+def write_message(message_type, notes):
+    global lmd
+    global db
+    global llm
+    global retriever
+    global chat_history
+    global memory
 
     print(f"Message type: {message_type} notes: {notes}")
     write_prompt = ChatPromptTemplate.from_template("""# Write a {message_type}
@@ -43,12 +71,17 @@ def write_email(message_type, notes):
 ## Section 2: Content
 {notes}
 """)
+    loaded_memory = RunnablePassthrough.assign(
+        history=RunnableLambda(memory.load_memory_variables) | itemgetter("history"),
+    )
 
     chain = (
-        {
+        loaded_memory
+        | {
             "emails": itemgetter("notes")  | retriever | doc_formatters.retriever_format_docs,
             "message_type": lambda x: x['message_type'],
-            "notes": lambda x: x['notes']
+            "notes": lambda x: x['notes'],
+            "history": lambda x: x['history']
         }
         | write_prompt
         | llm 
@@ -61,18 +94,71 @@ def write_email(message_type, notes):
         'notes': notes
     }, config={'callbacks': [lmd]})
 
+    memory.save_context({
+        "input": message_type + ": " + notes
+    }, {"output": res})
+
+    print(f"Result: '{res}'")
+
+def refine_message(feedback):
+    global lmd
+    global db
+    global llm
+    global retriever
+    global chat_history
+    global memory
+
+    refine_prompts = ChatPromptTemplate.from_messages([
+        SystemMessagePromptTemplate.from_template("""
+        You have composed a message based on user input and retrieved documents. The user has provided feedback on the previous message. Please refine the message based on the feedback.
+
+        **History**"""),
+        MessagesPlaceholder(variable_name="history"),
+        HumanMessagePromptTemplate.from_template("{feedback}")
+    ])
+
+
+    loaded_memory = RunnablePassthrough.assign(
+        history=RunnableLambda(memory.load_memory_variables) | itemgetter("history"),
+    )
+
+    logger.debug(f"Refining message: {feedback} with memory {memory.chat_memory}")
+
+    chain = (
+        loaded_memory
+        | {
+            "history": lambda x: x['history'],
+            "feedback": lambda x: x['feedback'],
+        }
+        | refine_prompts
+        | llm 
+        | StrOutputParser()
+    )
+
+
+    res = chain.invoke({
+        'feedback': feedback
+    }, config={'callbacks': [lmd]})
+
+    memory.save_context({
+        "input": f"Refine: {feedback}"
+    }, {"output": res})
+
     print(f"Result: '{res}'")
 
 
 def main():
     bindings = KeyBindings()
 
+    message_type = prompt('What are you writing? ("quit" to exit, Ctrl-D to end): ', key_bindings=bindings)
+    # Multiline input modkwe
+    notes = prompt('Enter notes: ', multiline=True, key_bindings=bindings)
+    write_message(message_type.strip(), notes.strip())
+
     while True:
         try:
-            message_type = prompt('What are you writing? ("quit" to exit, Ctrl-D to end): ', key_bindings=bindings)
-            # Multiline input modkwe
-            notes = prompt('Enter notes: ', multiline=True, key_bindings=bindings)
-            write_email(message_type.strip(), notes.strip())
+            feedback = prompt('How should we refine this? ("quit" to exit, Ctrl-D to end): ', key_bindings=bindings)
+            refine_message(feedback.strip())
         except EOFError:
             return
             
@@ -83,4 +169,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     lib_docdb.set_company_environment(args.company.upper())
+    init()
     main()
