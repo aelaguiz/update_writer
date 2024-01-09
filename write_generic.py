@@ -17,6 +17,8 @@ from langchain.prompts import ChatPromptTemplate
 from langchain.memory.chat_message_histories.in_memory import ChatMessageHistory
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from langchain.prompts import MessagesPlaceholder
+from halo import Halo
+
 
 lib_logging.setup_logging()
 
@@ -53,7 +55,6 @@ def write_message(message_type, notes):
     global chat_history
     global memory
 
-    print(f"Message type: {message_type} notes: {notes}")
     write_prompt = ChatPromptTemplate.from_template("""# Write a {message_type}
 
 ## Instructions
@@ -88,6 +89,9 @@ def write_message(message_type, notes):
         | StrOutputParser()
     )
 
+    spinner = Halo(text='Thinking...', spinner='dots')
+    spinner.start()
+
 
     res = chain.invoke({
         'message_type': message_type,
@@ -97,6 +101,8 @@ def write_message(message_type, notes):
     memory.save_context({
         "input": message_type + ": " + notes
     }, {"output": res})
+
+    spinner.stop()
 
     print(f"Result: '{res}'")
 
@@ -124,6 +130,9 @@ def refine_message(feedback):
 
     logger.debug(f"Refining message: {feedback} with memory {memory.chat_memory}")
 
+    spinner = Halo(text='Thinking...', spinner='dots')
+    spinner.start()
+
     chain = (
         loaded_memory
         | {
@@ -144,6 +153,8 @@ def refine_message(feedback):
         "input": f"Refine: {feedback}"
     }, {"output": res})
 
+    spinner.stop()
+
     print(f"Result: '{res}'")
 
 
@@ -156,11 +167,28 @@ def main():
     write_message(message_type.strip(), notes.strip())
 
     while True:
-        try:
-            feedback = prompt('How should we refine this? ("quit" to exit, Ctrl-D to end): ', key_bindings=bindings)
-            refine_message(feedback.strip())
-        except EOFError:
-            return
+        multiline = False
+
+        while True:
+            try:
+                if not multiline:
+                    # Single-line input mode
+                    line = prompt('How should we refine this? (""" for multiline, "quit" to exit, Ctrl-D to end): ', key_bindings=bindings)
+                    if line.strip() == '"""':
+                        multiline = True
+                        continue
+                    elif line.strip().lower() == 'quit':
+                        return  # Exit the CLI
+                    else:
+                        refine_message(line.strip())
+                        break
+                else:
+                    # Multiline input mode
+                    line = prompt('... ', multiline=True, key_bindings=bindings)
+                    refine_message(line.strip())
+                    multiline = False
+            except EOFError:
+                return
             
 if __name__ == "__main__":
     print(f"DID YOU UPDATE THE EMAIL DB?")
