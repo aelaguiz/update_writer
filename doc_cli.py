@@ -6,34 +6,13 @@ from prompt_toolkit import prompt
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.keys import Keys
 
+from src.util import doc_formatters
+
 # lib_logging.setup_logging()
 
 
 # lib_logging.set_console_logging_level(logging.ERROR)
 # logger = lib_logging.get_logger(logging.ERROR)
-
-def print_email_doc(page_content, metadata):
-    print(page_content)
-    print(metadata)
-    return
-    # Extracting metadata
-    email_id = metadata.get('email_id', 'N/A')
-    from_address = metadata.get('from_address', 'N/A')
-    subject = metadata.get('subject', 'N/A')
-    thread_id = metadata.get('thread_id', 'N/A')
-    to_address = metadata.get('to_address', 'N/A')
-
-    # Formatting and printing the email document
-    print("Email Document Details")
-    print("----------------------")
-    print(f"Email ID: {email_id}")
-    print(f"Thread ID: {thread_id}")
-    print(f"Subject: {subject}")
-    print(f"From: {from_address}")
-    print(f"To: {to_address}")
-    print("\nContent:")
-    print("----------------------")
-    print(page_content)
 
 
 def process_command(input):
@@ -41,10 +20,11 @@ def process_command(input):
 
     print(f"Processing: {input}")
 
-    docs = db.similarity_search_with_relevance_scores(input, k=50)
+    docs = db.similarity_search_with_relevance_scores(input, k=5)
     for doc, score in docs:
         print(f"Score {score}")
-        print_email_doc(doc.page_content, doc.metadata)
+        fmt = doc_formatters.format_doc(doc.page_content, doc.metadata, full_content=False)
+        print(fmt)
 
     # res = chain.invoke(input, config={
     #     'callbacks': [lmd, oaid]

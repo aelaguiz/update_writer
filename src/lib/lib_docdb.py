@@ -28,14 +28,21 @@ OPENAI_TEMPERATURE = float(os.getenv("OPENAI_TEMPERATURE"))
 
 COMPANY_ENV = None
 
-set_llm_cache(SQLiteCache(database_path=".langchain.db"))
-
 def set_company_environment(company_env):
     global COMPANY_ENV
     global EMAILDB_PATH
 
     EMAILDB_PATH = os.getenv(f'{company_env}_EMAILDB_PATH')
     COMPANY_ENV = company_env
+
+
+    set_llm_cache(SQLiteCache(database_path=f".{company_env}_langchain.db"))
+
+
+    
+def get_company_environment():
+    global COMPANY_ENV
+    return COMPANY_ENV
 
 def get_embedding_fn():
     return OpenAIEmbeddings(openai_api_key=os.getenv('OPENAI_API_KEY'), timeout=30)
@@ -65,11 +72,15 @@ def get_docdb():
     global pinecone_index
     global _record_manager
 
+    logger = lib_logging.get_logger()
+
     if not docdb:
         db_collection_name = "amirdocs"
 
         db_connection_string = os.getenv(f"{COMPANY_ENV}_DOCDB_DATABASE")
         record_manager_connection_string = os.getenv(f"{COMPANY_ENV}_RECORDMANAGER_DATABASE")
+
+        logger.info(f"Connecting to docdb: {db_connection_string} and record manager: {record_manager_connection_string}")
 
         docdb = PGVector(
             embedding_function=get_embedding_fn(),

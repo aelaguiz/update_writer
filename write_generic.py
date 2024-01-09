@@ -10,106 +10,20 @@ from langchain.prompts import ChatPromptTemplate
 from langchain.schema import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 from src.lib.lc_logger import LlmDebugHandler
+from operator import itemgetter
+from src.util import doc_formatters
 
 lib_logging.setup_logging()
 
 # lib_logger.set_console_logging_level(logger.ERROR)
 logger = lib_logging.get_logger()
 
-def format_email_docs(docs):
-    logger.info(f"Formatting docs: {docs}")
-    return "\n\n".join([format_email_doc(doc) for doc in docs])
-
-def format_email_doc(doc):
-    # Extracting metadata
-    email_id = doc.metadata.get('email_id', 'N/A')
-    from_address = doc.metadata.get('from_address', 'N/A')
-    subject = doc.metadata.get('subject', 'N/A')
-    thread_id = doc.metadata.get('thread_id', 'N/A')
-    to_address = doc.metadata.get('to_address', 'N/A')
-
-    # Formatting the email document as a Markdown string
-    email_details = []
-    email_details.append("### Email {subject}\n")
-    email_details.append(f"**Email ID:** {email_id}\n")
-    email_details.append(f"**Thread ID:** {thread_id}\n")
-    email_details.append(f"**Subject:** {subject}\n")
-    email_details.append(f"**From:** {from_address}\n")
-    email_details.append(f"**To:** {to_address}\n")
-    email_details.append("\n**Body:**\n")
-    email_details.append("```\n")
-    email_details.append(doc.page_content)
-    email_details.append("```\n")
-
-    return '\n'.join(email_details)
-
-def print_email_doc(page_content, metadata):
-    # Extracting metadata
-    email_id = metadata.get('email_id', 'N/A')
-    from_address = metadata.get('from_address', 'N/A')
-    subject = metadata.get('subject', 'N/A')
-    thread_id = metadata.get('thread_id', 'N/A')
-    to_address = metadata.get('to_address', 'N/A')
-
-    # Formatting and printing the email document
-    print("Email Document Details")
-    print("----------------------")
-    print(f"Email ID: {email_id}")
-    print(f"Thread ID: {thread_id}")
-    print(f"Subject: {subject}")
-    print(f"From: {from_address}")
-    print(f"To: {to_address}")
-    print("\nContent:")
-    print("----------------------")
-    print(page_content)
-
-
-from langchain.chains.query_constructor.base import AttributeInfo
-from langchain.chat_models import ChatOpenAI
-from langchain.retrievers.self_query.base import SelfQueryRetriever
-
-metadata_field_info = [
-    AttributeInfo(
-        name="email_id",
-        description="A unique identifier for the email.",
-        type="string",
-    ),
-    AttributeInfo(
-        name="from_address",
-        description="The email address of the sender.",
-        type="string",
-    ),
-    AttributeInfo(
-        name="to_address",
-        description="The email addresses of the recipients.",
-        type="string",
-    ),
-    AttributeInfo(
-        name="subject",
-        description="The subject line of the email.",
-        type="string",
-    ),
-    AttributeInfo(
-        name="thread_id",
-        description="Identifier for the thread to which this email belongs.",
-        type="string",
-    )
-]
-
 
 def write_email(message_type, notes):
+    lmd = LlmDebugHandler()
     db = lib_docdb.get_docdb()
     llm = lib_docdb.get_llm()
-
-    email_retriever = SelfQueryRetriever.from_llm(
-        llm,
-        db,
-        "E-mails sent by me",
-        metadata_field_info,
-        search_kwargs={"k": 10}
-    )
-
-    lmd = LlmDebugHandler()
+    retriever = db.as_retriever()
 
     print(f"Message type: {message_type} notes: {notes}")
     write_prompt = ChatPromptTemplate.from_template("""# Write a {message_type}
@@ -132,9 +46,9 @@ def write_email(message_type, notes):
 
     chain = (
         {
-            "emails": email_retriever | format_email_docs,
-            "message_type": RunnablePassthrough(),
-            "notes": RunnablePassthrough()
+            "emails": itemgetter("notes")  | retriever | doc_formatters.retriever_format_docs,
+            "message_type": lambda x: x['message_type'],
+            "notes": lambda x: x['notes']
         }
         | write_prompt
         | llm 
@@ -145,8 +59,7 @@ def write_email(message_type, notes):
     res = chain.invoke({
         'message_type': message_type,
         'notes': notes
-    }, config={
-    })
+    }, config={'callbacks': [lmd]})
 
     print(f"Result: '{res}'")
 

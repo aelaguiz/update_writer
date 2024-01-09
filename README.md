@@ -61,3 +61,74 @@ For contributions or inquiries, please contact [Project Coordinator's Email/Cont
 ```
 
 This README provides a clear overview of the project, the roles of each expert, their responsibilities, and the workflow of how these roles interact to achieve the project's goal. You can customize it further as needed.
+
+
+
+----
+
+# Prompts
+
+Certainly! Here are the prompts for all experts with a designated section for "{context}":
+
+### 1. E-Commerce Marketplace Expert
+- **Prompt**: 
+  - "Analyze the current trends in e-commerce marketplaces, focusing on consumer behaviors and competitive dynamics. Highlight specific challenges and opportunities for improvement in Cratejoy's marketplace.
+  - {context}
+  - Based on this context, provide insights on how these trends might impact Cratejoy."
+
+### 2. SaaS Platform Revitalization Expert
+- **Prompt**: 
+  - "Evaluate the performance of Cratejoy's SaaS platform, focusing on user engagement, revenue trends, and market position. Identify key challenges facing the platform and suggest strategies for revitalization or transformation.
+  - {context}
+  - Using the above context, compare with successful SaaS models in similar industries to propose actionable solutions."
+
+### 3. Digital Marketing and SEO Expert
+- **Prompt**: 
+  - "Assess Cratejoy's current digital marketing and SEO strategies. Identify areas of strength and weakness, especially in terms of online visibility and customer acquisition.
+  - {context}
+  - With the provided context, suggest improvements based on current best practices in e-commerce digital marketing."
+
+### 4. Financial Analyst and Pricing Strategist
+- **Prompt**: 
+  - "Review Cratejoy's financial performance, focusing on revenue streams, cost structures, and pricing strategies. Identify financial challenges and suggest optimizations for pricing models and cost management.
+  - {context}
+  - Based on this financial context, provide a brief comparative analysis with industry benchmarks."
+
+### 5. Technology and Innovation Expert
+- **Prompt**: 
+  - "Examine Cratejoy's technological infrastructure and innovation practices. Identify technological challenges and outdated practices that may hinder business growth.
+  - {context}
+  - Suggest modern technology upgrades and innovative features that could enhance Cratejoy's platforms, using the provided technological context."
+
+### 6. Customer Experience and Feedback Analyst
+- **Prompt**: 
+  - "Analyze customer feedback and user experience data for Cratejoy's marketplace and SaaS platform. Identify key areas of customer dissatisfaction and suggest improvements to enhance the overall customer experience.
+  - {context}
+  - Provide examples of effective customer experience strategies from similar businesses based on this customer feedback context."
+
+### 7. Legal and Compliance Advisor
+- **Prompt**: 
+  - "Review Cratejoy's adherence to e-commerce laws, data protection regulations, and compliance requirements. Identify any potential legal and compliance risks.
+  - {context}
+  - Suggest strategies to mitigate these risks, using the provided legal and compliance context."
+
+### 8. Corporate Strategy and Business Development Expert
+- **Prompt**: 
+  - "Analyze Cratejoy's current business strategy and development efforts. Identify strategic challenges and opportunities for growth.
+  - {context}
+  - Suggest new business initiatives, potential partnerships, or market expansion strategies, with examples of successful strategies in similar industries, based on the provided strategic context."
+
+### 9. Integration and Synthesis Coordinator
+- **Prompt**: 
+  - "You will receive reports from various experts analyzing Cratejoy's business.
+  - {context}
+  - Your task is to integrate these reports into a coherent and concise memo. Highlight key challenges identified by each expert, synthesize their recommendations, and prioritize actions based on their potential impact on Cratejoy's growth and efficiency."
+
+These prompts are structured to allow for the insertion of extensive context in a separate section, ensuring clarity and focus in the AI's analysis.
+
+
+---
+
+
+
+

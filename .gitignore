@@ -4,3 +4,10 @@ __pycache__
 *.pkl
 *.json
 venv
+.*.db
+.DS_Store
+cache*
+env
+sources
+*.pickle
+logs
