@@ -1,3 +1,12 @@
+## Setup instructions
+
+1. Install and/or update pyenv with `brew install pyenv`
+1. Install a version of python that works with the dependencies: `pyenv install 3.11.4`
+1. Create the virtualenv: `~/.pyenv/versions/3.11.4/bin/python -m venv venv`
+1. Activate the virtualenv (you'll do this every time you open a new shell): `source venv/bin/activate`
+1. Install the dependencies into your VE `pip install -r requirements.txt`
+1. Make a copy of the environment file and fill it out `cp env.example .env`
+
 ## TODO
 
 - Add an expert for each content source (slack, email, etc)
