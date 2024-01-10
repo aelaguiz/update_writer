@@ -7,6 +7,7 @@ from prompt_toolkit.key_binding import KeyBindings
 from src.lib import lib_docdb, lib_logging, lc_logger
 from langchain.memory import ConversationBufferMemory
 from langchain.memory.chat_message_histories.in_memory import ChatMessageHistory
+from langchain.memory import ConversationSummaryMemory, ChatMessageHistory
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder
 from langchain.schema import StrOutputParser
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
@@ -33,7 +34,7 @@ def init(company):
     llm = lib_docdb.get_llm()
     retriever = db.as_retriever()
     chat_history = ChatMessageHistory()
-    memory = ConversationBufferMemory(chat_memory=chat_history, input_key="input", output_key="output", return_messages=True)
+    memory = ConversationSummaryMemory(llm=llm, chat_memory=chat_history, input_key="input", memory_key="history", return_messages=True)
 
     # Unique file name for conversation history
     conversation_file_name = f"conversation_{company}_{uuid.uuid4()}.txt"
@@ -41,9 +42,16 @@ def init(company):
     os.makedirs(os.path.dirname(conversation_file), exist_ok=True)
     print(f"Conversation will be saved in: {conversation_file}")
 
-def save_conversation(input_text, output_text):
+def save_conversation(input_text, memory_text):
     with open(conversation_file, "a") as file:
-        file.write(f"User: {input_text}\n\nAI: {output_text}\n\n---------------------------------------------------")
+        file.write(f"User: {input_text}\n\nAI: {memory_text}\n\n---------------------------------------------------")
+
+def show_obj(input_obj):
+    print("\n\n")
+    print("OBJ: ", input_obj)
+    print("\n\n")
+
+    return input_obj
 
 def create_chain(prompt_template, input_obj):
     loaded_memory = RunnablePassthrough.assign(history=RunnableLambda(memory.load_memory_variables) | itemgetter("history"))
@@ -51,6 +59,7 @@ def create_chain(prompt_template, input_obj):
     return (
         loaded_memory
         | input_obj 
+        | show_obj
         | prompt_template
         | llm 
         | StrOutputParser()
@@ -83,29 +92,33 @@ def write_message(message_type, notes):
         "history": memory.load_memory_variables(None)["history"]
     })
     print(fmted_prompt)
-    memory.save_context({"input": fmted_prompt}, {"output": res})
+    memory.save_context({"input": fmted_prompt}, {"history": res})
     save_conversation(fmted_prompt, res)
 
     print(f"AI: {res}")
 
 def refine_message(feedback):
+    global memory
+
     refine_prompts = ChatPromptTemplate.from_messages([
         SystemMessagePromptTemplate.from_template(prompts.refine_generic_message_prompt), 
         MessagesPlaceholder(variable_name="history"), 
-        HumanMessagePromptTemplate.from_template("{feedback}")])  # Simplified for brevity
+        HumanMessagePromptTemplate.from_template("{input}")])  # Simplified for brevity
 
     chain = create_chain(
         refine_prompts,
         {
-            "context": itemgetter("feedback")  | retriever | doc_formatters.retriever_format_docs,
+            "context": itemgetter("input")  | retriever | doc_formatters.retriever_format_docs,
             "history": lambda x: x['history'],
-            "feedback": lambda x: x['feedback']
+            "input": lambda x: x['input']
         }
     )
     spinner = initialize_spinner()
 
     spinner.start()
-    res = chain.invoke({'feedback': feedback}, config={'callbacks': []})
+    res = chain.invoke({
+        'input': feedback
+    }, config={'callbacks': [lmd]})
     spinner.stop()
 
     print(f"AI: {res}")
@@ -113,9 +126,9 @@ def refine_message(feedback):
     fmted_prompt = refine_prompts.format(**{
         "context": doc_formatters.retriever_format_docs(retriever.get_relevant_documents(feedback)),
         "history": memory.load_memory_variables(None)["history"],
-        "feedback": feedback
+        "input": feedback
     })
-    memory.save_context({"input": fmted_prompt}, {"output": res})
+    memory.save_context({"input": fmted_prompt}, {"history": res})
     save_conversation(fmted_prompt, res)
 
 
