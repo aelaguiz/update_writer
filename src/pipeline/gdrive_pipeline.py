@@ -15,10 +15,10 @@ setup_logging()
 logger = get_logger()
 COMPANY_ENV = None
 
-def get_gdrive_files(loaded_email_ids):
+def get_gdrive_files(max_docs):
     lib_gdrive.gmail_authenticate(COMPANY_ENV)
     logger.info(f"Getting my recently viewed docs")
-    gdrive_files = lib_gdrive.list_recently_viewed_files(batch_size=100)
+    gdrive_files = lib_gdrive.list_recently_viewed_files(batch_size=max_docs)
     
     logger.debug(f"Found {len(gdrive_files)} files")
     for file in gdrive_files:
@@ -92,10 +92,8 @@ def batch(iterable, size):
             return
         yield batch
 
-def gdrive_pipeline(nworkers):
-    loaded_file_ids = []
-    # list(lib_emaildb.get_email_ids())
-    files = get_gdrive_files(loaded_file_ids)
+def gdrive_pipeline(max_docs):
+    files = get_gdrive_files(max_docs)
 
     # Split emails into batches of size 5
     batch_size = 25
@@ -123,8 +121,8 @@ def gdrive_pipeline(nworkers):
 
     logger.info(f"Successfully loaded {len(files)} files")
 
-def run_pipeline(company_env, nworkers):
+def run_pipeline(company_env, max_docs):
     global COMPANY_ENV
     COMPANY_ENV = company_env
     lib_docdb.set_company_environment(COMPANY_ENV)
-    gdrive_pipeline(nworkers)
+    gdrive_pipeline(max_docs)

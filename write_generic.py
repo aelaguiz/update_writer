@@ -73,7 +73,7 @@ def write_message(message_type, notes):
     spinner = initialize_spinner()
 
     spinner.start()
-    res = chain.invoke({'message_type': message_type, 'notes': notes}, config={'callbacks': [lmd]})
+    res = chain.invoke({'message_type': message_type, 'notes': notes}, config={'callbacks': []})
     spinner.stop()
 
     fmted_prompt = write_prompt.format(**{
@@ -97,6 +97,7 @@ def refine_message(feedback):
     chain = create_chain(
         refine_prompts,
         {
+            "context": itemgetter("feedback")  | retriever | doc_formatters.retriever_format_docs,
             "history": lambda x: x['history'],
             "feedback": lambda x: x['feedback']
         }
@@ -104,17 +105,19 @@ def refine_message(feedback):
     spinner = initialize_spinner()
 
     spinner.start()
-    res = chain.invoke({'feedback': feedback}, config={'callbacks': [lmd]})
+    res = chain.invoke({'feedback': feedback}, config={'callbacks': []})
     spinner.stop()
 
+    print(f"AI: {res}")
+
     fmted_prompt = refine_prompts.format(**{
+        "context": doc_formatters.retriever_format_docs(retriever.get_relevant_documents(feedback)),
         "history": memory.load_memory_variables(None)["history"],
         "feedback": feedback
     })
     memory.save_context({"input": fmted_prompt}, {"output": res})
     save_conversation(fmted_prompt, res)
 
-    print(f"AI: {res}")
 
 def main():
     bindings = KeyBindings()
