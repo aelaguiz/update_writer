@@ -7,7 +7,6 @@ venv
 .*.db
 .DS_Store
 cache*
-env
 sources
 *.pickle
 logs
