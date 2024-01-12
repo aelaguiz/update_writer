@@ -13,6 +13,7 @@ You need to have:
 ## Roadmap
 
 1. Automatic updating of docs & e-mails
+- Separate out documents into diff collections
 1. Make retrieval aware of document names
 2. Standardize metadata format across file tylpes
 3. Pull document loading into its own library

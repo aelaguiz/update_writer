@@ -64,6 +64,7 @@ def load_emails(email_details):
                 'created_at': timestamp,
                 'to_address': email['to'] if email['to'] else '',
                 'subject': email['subject'] if email['subject'] else '',
+                'name': f"FROM: {email['from']}\nTO: {email['to']}\nSUBJECT: {email['subject'] if email['subject'] else 'No Subject'}" 
             }
 
             docs.append(Document(
