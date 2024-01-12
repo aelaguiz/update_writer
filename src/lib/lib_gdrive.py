@@ -19,15 +19,23 @@ logger = lib_logging.get_logger()
 from diskcache import Cache
 
 # If modifying these SCOPES, delete the file token.pickle.
-SCOPES = ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/drive.readonly']
+SCOPES = [
+    'https://www.googleapis.com/auth/gmail.readonly',
+    'https://www.googleapis.com/auth/drive.readonly',
+    'https://www.googleapis.com/auth/documents',
+    'https://www.googleapis.com/auth/drive.file'
+]
+
 
 _gmail_service = None
 _gdrive_service = None
+_gdocs_service = None
 COMPANY_ENV = None
 
 def gmail_authenticate(company_env):
     global _gmail_service
     global _gdrive_service
+    global _gdocs_service
     global COMPANY_ENV
     COMPANY_ENV = company_env
 
@@ -50,6 +58,7 @@ def gmail_authenticate(company_env):
 
     _gmail_service = build('gmail', 'v1', credentials=creds)
     _gdrive_service = build('drive', 'v3', credentials=creds)
+    _gdocs_service = build('docs', 'v1', credentials=creds)
 
 def list_messages(user_id, query='', batch_size=100):
     global COMPANY_ENV
@@ -236,3 +245,70 @@ def get_file_contents(file_id, file_obj):
             return file_obj
 
         return _get_file_contents(file_id, file_obj)
+
+def find_google_doc_by_title(title):
+    global _gdrive_service
+    query = f"name = '{title}' and mimeType = 'application/vnd.google-apps.document'"
+    response = _gdrive_service.files().list(q=query).execute()
+    files = response.get('files', [])
+    return files[0]['id'] if files else None
+
+def publish_google_doc(title, content, overwrite=False):
+    global _gdrive_service
+    doc_id = find_google_doc_by_title(title)
+    if doc_id and not overwrite:
+        raise ValueError(f"A document with title '{title}' already exists.")
+
+    if doc_id:
+        # Update existing document
+        requests = [{'deleteContentRange': {'range': {'segmentId': '', 'startIndex': 1, 'endIndex': 1}}}, 
+                    {'insertText': {'location': {'index': 1}, 'text': content}}]
+        _gdocs_service.documents().batchUpdate(documentId=doc_id, body={'requests': requests}).execute()
+    else:
+        # Create new document
+        document = _gdocs_service.documents().create(body={'title': title}).execute()
+        doc_id = document['documentId']
+        requests = [{'insertText': {'location': {'index': 1}, 'text': content}}]
+        _gdocs_service.documents().batchUpdate(documentId=doc_id, body={'requests': requests}).execute()
+    return doc_id
+
+def update_google_doc_content(doc_id, new_content):
+    global _gdocs_service
+
+    try:
+        # First, retrieve the document to find out its length
+        document = _gdocs_service.documents().get(documentId=doc_id).execute()
+        content_length = len(document.get('body').get('content', []))
+
+        # Prepare requests to clear the document and insert new content
+        requests = [
+            # Clear the entire document
+            {'deleteContentRange': {'range': {'startIndex': 1, 'endIndex': content_length - 1}}},
+            # Insert the new content
+            {'insertText': {'location': {'index': 1}, 'text': new_content}}
+        ]
+        print(requests)
+
+        # Execute the batch update
+        _gdocs_service.documents().batchUpdate(documentId=doc_id, body={'requests': requests}).execute()
+        print(f"Document with ID {doc_id} updated successfully.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+
+def update_google_doc_title(doc_id, new_title):
+    global _gdocs_service
+
+    # Prepare the request body for updating the title
+    requests = [{
+        'updateDocumentTitle': {
+            'title': new_title
+        }
+    }]
+
+    # Execute the request
+    try:
+        _gdocs_service.documents().batchUpdate(documentId=doc_id, body={'requests': requests}).execute()
+        print(f"Document title updated to '{new_title}'")
+    except Exception as e:
+        print(f"An error occurred: {e}")

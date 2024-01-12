@@ -37,7 +37,7 @@ from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from operator import itemgetter
 from src.util import doc_formatters
 from src.util import prompts
-from src.util import conversation
+from src.lib import lib_conversation
 import datetime
 import dateutil
 
@@ -83,7 +83,7 @@ def init(company):
         "Search company emails",
     )
 
-    tools = [gdrive_tool, email_tool, lib_tools.save_gdoc_tool]
+    tools = [gdrive_tool, email_tool, lib_tools.save_gdoc_tool, lib_tools.update_gdoc_tool, lib_tools.change_title_gdoc_tool]
     agent = OpenAIFunctionsAgent(
         llm= llm,
         prompt= agent_prompt,
@@ -100,7 +100,7 @@ def init(company):
         history_messages_key="chat_history",
     )
 
-    conversation.init_conversation(company)
+    lib_conversation.init_conversation(company)
 
 def show_obj(input_obj):
     # print("\n\n")
@@ -113,6 +113,8 @@ def initialize_spinner():
     return Halo(text='Thinking...', spinner='dots')
 
 def process_input(input):
+    lib_conversation.save_message(input, "HUMAN")
+
     spinner = initialize_spinner()
 
     spinner.start()
@@ -132,8 +134,8 @@ def process_input(input):
     # # print(fmted_prompt)
     # memory.save_context({"input": input}, {"history": res})
 
-    conversation.save_conversation(input, output)
     print(f"AI: {output}\n\n")
+    lib_conversation.save_message(output, "AI")
 
 def main():
     bindings = KeyBindings()
@@ -159,5 +161,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     lib_docdb.set_company_environment(args.company.upper())
+    lib_tools.set_company_environment(args.company.upper())
     init(args.company)
     main()
