@@ -48,7 +48,7 @@ def load_files(file_details):
                 'created_time': file_obj['createdTime'],
                 'modified_time': file_obj['modifiedTime'],
                 'name': file_obj['name'],
-                'gdrive_file_id': file_obj['id'],
+                'id': file_obj['id'],
                 'mime_type': file_obj['mimeType'],
                 'source': 'gdrive'
             }

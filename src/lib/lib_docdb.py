@@ -157,6 +157,7 @@ def add_emails(email_details):
                 timestamp = int(email['send_date'].timestamp())
 
                 metadata = {
+                    'id': email['id'],
                     'type': 'email',
                     'email_id': email['id'],
                     'thread_id': email['threadId'],
@@ -198,6 +199,10 @@ def add_docs(docs):
 
     try:
         logger.debug(f"Adding {len(docs)} docs to index")
+        for doc in docs:
+            if not doc.metadata.get('id'):
+                assert(False)
+
         res = index(
             docs,
             _record_manager,
