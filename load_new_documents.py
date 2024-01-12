@@ -1,7 +1,10 @@
 import argparse
+import dotenv
 import src.pipeline.gdrive_pipeline as gdrive_pipeline
 import src.lib.lib_logging as lib_logging
 import logging
+
+dotenv.load_dotenv()
 
 googleapiclient_logger = logging.getLogger('googleapiclient.discovery_cache')
 googleapiclient_logger.setLevel(logging.WARNING)

@@ -11,9 +11,12 @@ from langchain.memory import ConversationBufferWindowMemory, ConversationBufferM
 from langchain.memory.chat_message_histories.in_memory import ChatMessageHistory
 from langchain.memory import ConversationSummaryMemory, ChatMessageHistory
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder
+from langchain.callbacks.manager import CallbackManagerForRetrieverRun
 from langchain_core.runnables import RunnableLambda
 
 from prompt_toolkit.history import FileHistory
+from langchain.retrievers import TimeWeightedVectorStoreRetriever
+
 
 
 from langchain.schema import StrOutputParser
@@ -26,6 +29,50 @@ import datetime
 lib_logging.setup_logging()
 logger = lib_logging.get_logger()
 
+class EnhancedTimeWeightedRetriever(TimeWeightedVectorStoreRetriever):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def _transform_document_dates(self, documents, current_time):
+        # Transform the document dates as required
+
+        for i, doc in enumerate(documents):
+            if doc.metadata.get("type") == 'email':
+                doc.metadata['created_at'] = doc.metadata.get('send_date')
+                doc.metadata['last_access_date'] = doc.metadata.get('send_date')
+            elif doc.metadata.get("source") == 'gdrive':
+                doc.metadata['created_at'] = doc.metadata.get('created_time')
+                doc.metadata['last_access_date'] = doc.metadata.get('modified_time')
+            else:
+                logger.error(f"Unknown document type: {doc.metadata.get('type')} {doc.metadata.get('source')}")
+                assert(False)
+
+            doc.metadata["buffer_idx"] = len(self.memory_stream) + i
+            logger.debug(f"EnhancedTimeWeightedRetriever doc.metadata: {doc.metadata}")
+
+        self.memory_stream.extend(documents)
+
+            # doc.metadata['created_at'] = doc.metadata.get('created_at', current_time)
+            # doc.metadata['last_accessed_at'] = current_time
+        return documents
+
+    def _get_relevant_documents(self, query, *, run_manager: CallbackManagerForRetrieverRun):
+        logger.debug(f"EnhancedTimeWeightedRetriever query: {query} kwargs {self.search_kwargs}")
+        # Get documents from the wrapped retriever
+        docs = self.vectorstore.similarity_search(
+            query, **self.search_kwargs
+        )
+        logger.debug(f"EnhancedTimeWeightedRetriever docs: {docs}")
+
+        
+        # Transform documents and set in memory_stream
+        current_time = datetime.datetime.now()
+        self._transform_document_dates(docs, current_time)
+
+        # Call the parent method to proceed with the usual flow
+        return super()._get_relevant_documents(query, run_manager=run_manager)
+
+
 lmd = None
 db = None
 llm = None
@@ -33,14 +80,20 @@ retriever = None
 chat_history = None
 memory = None
 conversation_file = None
+time_weighted_retriever = None
 
 def init(company):
-    global lmd, db, llm, retriever, chat_history, memory, conversation_file
+    global lmd, db, llm, retriever, chat_history, memory, conversation_file, time_weighted_retriever
 
     lmd = lc_logger.LlmDebugHandler()  
     db = lib_docdb.get_docdb()
     llm = lib_docdb.get_llm()
     retriever = db.as_retriever()
+
+    time_weighted_retriever = EnhancedTimeWeightedRetriever(
+        vectorstore=db, decay_rate=0.0000000000000000000000001, k=3
+    )
+
     chat_history = ChatMessageHistory()
     memory = ConversationBufferMemory(chat_memory=chat_history, input_key="input", memory_key="history", return_messages=True)
 
@@ -107,6 +160,8 @@ def process_input(input):
     def compose_retriever_input(_dict):
         return _compose_retriever_input(_dict["input"], _dict["history"])
 
+    retriever
+
     chain = create_chain(
 
         personal_gpt_prompt, 
@@ -114,7 +169,7 @@ def process_input(input):
             # "emails": itemgetter("history")  | retriever | doc_formatters.retriever_format_docs,
             "input": lambda x: x['input'],
             "history": lambda x: x['history'],
-            "emails": {"input": itemgetter("input"), "history": itemgetter("history")} | RunnableLambda(compose_retriever_input) | retriever | doc_formatters.retriever_format_docs,
+            "emails": {"input": itemgetter("input"), "history": itemgetter("history")} | RunnableLambda(compose_retriever_input) | time_weighted_retriever | doc_formatters.retriever_format_docs,
         }
     )
     spinner = initialize_spinner()

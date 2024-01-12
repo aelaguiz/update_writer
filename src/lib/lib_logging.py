@@ -57,7 +57,7 @@ def setup_logging():
     logger.setLevel(logging.DEBUG)  # Set the logger to debug level
 
     rich_handler = RichHandler(console=console, rich_tracebacks=True, markup=True)
-    rich_handler.setLevel(logging.INFO)
+    rich_handler.setLevel(logging.DEBUG)
     logger.addHandler(rich_handler)
 
     # Create file handler which logs even debug messages
