@@ -45,13 +45,14 @@ def load_files(file_details):
             metadata = {
                 'type': file_obj['gdrive_type'],
                 'owners': ", ".join(f['displayName'] for f in file_obj['owners']),
-                'created_time': file_obj['createdTime'],
-                'modified_time': file_obj['modifiedTime'],
                 'name': file_obj['name'],
                 'id': file_obj['id'],
                 'mime_type': file_obj['mimeType'],
                 'source': 'gdrive'
             }
+
+            metadata['created_at'] = int(datetime.fromisoformat(file_obj['createdTime']).replace(tzinfo=None).timestamp())
+            metadata['modified_at'] = int(datetime.fromisoformat(file_obj['modifiedTime']).replace(tzinfo=None).timestamp())
 
             docs.append(Document(
                 page_content=file_obj['content'],
@@ -71,7 +72,7 @@ def load_files(file_details):
         # for doc in split_docs:
         #     logger.debug(f"Adding {doc.metadata['name']} to index: {doc.metadata}: {doc.page_content}")
 
-        lib_docdb.add_docs(split_docs)
+        lib_docdb.add_docs(split_docs, 'gdrive', None)
         logger.debug(f"Loaded {len(split_docs)} docs")
         return True
     except Exception as e:
@@ -96,7 +97,7 @@ def gdrive_pipeline(max_docs):
     files = get_gdrive_files(max_docs)
 
     # Split emails into batches of size 5
-    batch_size = 25
+    batch_size = 5
     file_batches = list(batch(files, batch_size))
 
     succeeded = 0

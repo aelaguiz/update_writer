@@ -142,57 +142,7 @@ def add_texts_with_retry(docdb, texts, metadatas):
     docdb.add_texts(texts, metadatas=metadatas)
 
 
-def add_emails(email_details):
-    docdb = get_docdb()
-    global _record_manager
-
-    logger = lib_logging.get_logger()
-    try:
-        texts = []
-        mds = []
-        docs = []
-        for email in email_details:
-            try:
-                # print(email)
-                timestamp = int(email['send_date'].timestamp())
-
-                metadata = {
-                    'id': email['id'],
-                    'type': 'email',
-                    'email_id': email['id'],
-                    'thread_id': email['threadId'],
-                    'from_address': email['from'],
-                    'send_date': timestamp,
-                    'to_address': email['to'] if email['to'] else '',
-                    'subject': email['subject'] if email['subject'] else '',
-                    'source': 'gmail'
-                }
-
-                docs.append(Document(
-                    page_content=email['original_message'],
-                    metadata=metadata
-                
-                ))
-            except Exception as e:
-                logger.error(f"Error setting metadata: {e}")
-                raise RuntimeError(f"Error setting metadata: {e}")
-
-
-        res = index(
-            docs,
-            _record_manager,
-            docdb,
-            cleanup=None,
-            source_id_key="source"
-        )
-
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        logger.error(f"Error loading document into db: {e}")
-        raise RuntimeError(f"Error loading document into db: {e}")
-
-def add_docs(docs):
+def add_docs(docs, source, doc_type):
     logger = lib_logging.get_logger()
     docdb = get_docdb()
     global _record_manager
@@ -201,7 +151,23 @@ def add_docs(docs):
         logger.debug(f"Adding {len(docs)} docs to index")
         for doc in docs:
             if not doc.metadata.get('id'):
-                assert(False)
+                raise RuntimeError(f"Document does not have an id")
+            if not doc.metadata.get('created_at') or type(doc.metadata.get('created_at')) != int:
+                raise RuntimeError(f"Document {doc.metadata.get('id')} does not have a valid created_at timestamp")
+
+            if doc_type is None:
+                if not doc.metadata.get('type'):
+                    raise RuntimeError(f"Document {doc.metadata.get('id')} does not have a valid type and none specified")
+            else:
+                if not doc.metadata.get('type'):
+                    doc.metadata['type'] = doc_type
+
+            if source is None:
+                if not doc.metadata.get('source'):
+                    raise RuntimeError(f"Document {doc.metadata.get('id')} does not have a valid source and none specified")
+            else:
+                if not doc.metadata.get('source'):
+                    doc.metadata['source'] = source
 
         res = index(
             docs,

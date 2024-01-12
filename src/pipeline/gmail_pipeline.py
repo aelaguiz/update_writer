@@ -1,6 +1,7 @@
 import dotenv
 from ..lib.lib_logging import get_logger, get_run_logger, setup_logging, set_console_logging_level
 from tqdm import tqdm
+from langchain_core.documents import Document
 
 from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 from itertools import islice
@@ -12,17 +13,12 @@ setup_logging()
 logger = get_logger()
 COMPANY_ENV = None
 
-def get_gmail_messages(loaded_email_ids):
+def get_gmail_messages(max_documents):
     lib_gdrive.gmail_authenticate(COMPANY_ENV)
     logger.info(f"Getting emails sent from me")
-    emails_sent = lib_gdrive.list_messages('me', query='from:me', batch_size=5000)
+    emails_sent = lib_gdrive.list_messages('me', query='from:me', batch_size=max_documents)
 
-    emails = []
-    for email in emails_sent:
-        if email['id'] not in loaded_email_ids:
-            emails.append(email)
-    
-    return emails
+    return emails_sent
 
 def get_message_details(email):
     try:
@@ -51,7 +47,32 @@ def get_message_details(email):
 def load_emails(email_details):
     # logger.debug(f"Loading e-mail into db {email_details['id']} - {email_details['from']} - {email_details['to']} - {email_details['subject']}") 
     try:
-        lib_docdb.add_emails(email_details)
+        docs = []
+
+        for email in email_details:
+            # print(email)
+            timestamp = int(email['send_date'].timestamp())
+
+            metadata = {
+                'id': email['id'],
+                'type': 'email',
+                'source': 'gmail',
+                'email_id': email['id'],
+                'thread_id': email['threadId'],
+                'from_address': email['from'],
+                'send_date': timestamp,
+                'created_at': timestamp,
+                'to_address': email['to'] if email['to'] else '',
+                'subject': email['subject'] if email['subject'] else '',
+            }
+
+            docs.append(Document(
+                page_content=email['original_message'],
+                metadata=metadata
+            
+            ))
+
+        lib_docdb.add_docs(docs, 'gmail', 'email')
         # logger.debug(f"Loaded e-mail")
         return email_details
     except Exception as e:
@@ -71,10 +92,10 @@ def batch(iterable, size):
             return
         yield batch
 
-def gmail_pipeline(nworkers):
+def gmail_pipeline(max_documents):
     loaded_email_ids = []
     # list(lib_emaildb.get_email_ids())
-    emails = get_gmail_messages(loaded_email_ids)
+    emails = get_gmail_messages(max_documents)
 
     # Split emails into batches of size 5
     batch_size = 25
@@ -103,8 +124,8 @@ def gmail_pipeline(nworkers):
 
     logger.info(f"Successfully loaded {len(emails)} emails")
 
-def run_pipeline(company_env, nworkers):
+def run_pipeline(company_env, max_documents):
     global COMPANY_ENV
     COMPANY_ENV = company_env
     lib_docdb.set_company_environment(COMPANY_ENV)
-    gmail_pipeline(nworkers)
+    gmail_pipeline(max_documents)

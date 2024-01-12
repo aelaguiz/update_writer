@@ -121,7 +121,7 @@ def init(company):
     retriever = db.as_retriever()
 
     time_weighted_retriever = EnhancedTimeWeightedRetriever(
-        vectorstore=db, decay_rate=0.50, k=10
+        vectorstore=db, decay_rate=0.80, k=10
     )
 
     chat_history = ChatMessageHistory()
