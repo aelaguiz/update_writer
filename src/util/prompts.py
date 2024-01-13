@@ -1,3 +1,26 @@
+write_email_update_prompt = """# Write Stakeholder Weekly Progress Update
+
+## Instructions
+- Create a stakeholder weekly progress update.
+- Do not include any greetings, simply start the content of the message.
+- Maintain a candid and casual tone, avoiding expressions of exaggerated enthusiasm (e.g., 'thrilled', 'excited').
+- Minimize the use of exclamations.
+- Avoid statements that imply grandiosity or hype, such as 'we're onto something big.'
+- Do not include motivational or team-building statements, especially in the closing.
+- The update is an informal 'what's on my mind' communication.
+- Notes for content can be transcribed audio, a collection of random notes, or any combination thereof, not necessarily in a specific order.
+
+## Section 1: Tone and Style Examples
+```
+{emails}
+```
+
+## Section 2: Content for This Week
+```
+{notes}
+```
+"""
+
 write_generic_message_prompt = """# Write a {message_type}
 
 ## Instructions
@@ -303,6 +326,9 @@ You are an AI assistant designed to provide high-level support to a CEO with ext
 
 personal_gpt_agent_prompt_v2 = """**You are an AI assistant designed to provide high-level support to a CEO with extensive expertise and a top-secret clearance.  Your primary task is to assist in achieving specific business and personal objectives, utilizing various tools and capabilities at your disposal.**
 
+
+My name is Amir and you should refer to me as such.
+
 **Your Goals:**
 1. **Achieve Objectives:** Focus on actively achieving the user's goals. Use interactions and tools to clarify and strengthen your understanding and performance.
 2. **Document and Email Analysis:** Locate specific documents or emails when directed, or use judgment to reference relevant documents as needed. Update or modify existing documents to prevent redundancy.
@@ -340,3 +366,30 @@ Notice that the AI used the same document each time it saved.
 """
 
 personal_gpt_agent_prompt = personal_gpt_agent_prompt_v2
+
+
+"""Based on the content and style of your "what's on my mind" emails, here are some observations about your writing style, the devices you employ, and your tone:
+
+**Writing Style and Tone:**
+- **Conversational and Direct:** You use a conversational tone that feels like you're speaking directly to the reader. This makes the emails feel personal and engaging.
+- **Candid and Transparent:** You openly share successes and challenges, creating a sense of transparency and trust with the recipients.
+- **Encouraging and Positive:** Despite discussing challenges, your tone remains positive and encouraging, focusing on progress and potential solutions.
+- **Inclusive and Appreciative:** You often express gratitude for the team's efforts, highlighting specific contributions and fostering a sense of inclusion.
+
+**Writing Devices:**
+- **Bullet Points and Lists:** You frequently use bullet points or lists to organize information, making it easier to digest and follow.
+- **Casual Language:** The use of casual language and phrases like "Hey buddy," "full-on race," and "really busy over here" contributes to the informal tone.
+- **Anecdotal References:** You occasionally reference personal experiences, such as being ill, which adds a human element to the updates.
+- **Visual Aids:** In some emails, you mention including images or graphs to illustrate points, which helps to convey complex information visually.
+- **Action-Oriented Language:** You use verbs that convey action and momentum, such as "tackling," "pouring," and "stepping up," which adds energy to your messages.
+
+**Structural Elements:**
+- **Clear Subject Lines:** The subject lines of your emails are straightforward and informative, providing a clear indication of the content.
+- **Structured Updates:** You typically structure the emails with an introductory statement followed by detailed updates, often ending with a summary or reflection.
+- **Strategic Focus:** Your updates often include strategic insights, reflecting on past decisions and outlining future plans, which demonstrates a forward-thinking mindset.
+
+**Engagement Techniques:**
+- **Questions and Rhetoric:** You sometimes pose rhetorical questions or invite feedback, which can engage the reader and prompt reflection.
+- **Personal Sign-Off:** You sign off with your name and title, adding a personal touch to the communication.
+
+Overall, your emails are characterized by a blend of professionalism and personal touch, with a focus on clarity, strategy, and team collaboration. You balance discussing the hard realities of business with a motivational tone that encourages the team to focus on solutions and the future."""

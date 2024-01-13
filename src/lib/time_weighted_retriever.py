@@ -41,7 +41,7 @@ class EnhancedTimeWeightedRetriever(TimeWeightedVectorStoreRetriever):
                 assert(False)
 
             doc.metadata["buffer_idx"] = len(self.memory_stream) + i
-            logger.debug(f"EnhancedTimeWeightedRetriever doc.metadata: {doc.metadata}")
+            # logger.debug(f"EnhancedTimeWeightedRetriever doc.metadata: {doc.metadata}")
             docs.append(doc)
 
         self.memory_stream.extend(docs)
@@ -51,23 +51,23 @@ class EnhancedTimeWeightedRetriever(TimeWeightedVectorStoreRetriever):
         return docs_and_scores
 
     def _get_relevant_documents(self, query, *, run_manager: CallbackManagerForRetrieverRun):
-        logger.debug(f"EnhancedTimeWeightedRetriever query: {query} kwargs {self.search_kwargs}")
+        # logger.debug(f"EnhancedTimeWeightedRetriever query: {query} kwargs {self.search_kwargs}")
         # Get documents from the wrapped retriever
         docs_and_scores = self.vectorstore.similarity_search_with_relevance_scores(
             query, **self.search_kwargs
         )
-        logger.debug(f"EnhancedTimeWeightedRetriever docs: {len(docs_and_scores)}")
+        # logger.debug(f"EnhancedTimeWeightedRetriever docs: {len(docs_and_scores)}")
 
         
         # Transform documents and set in memory_stream
         current_time = datetime.datetime.now()
         self._transform_document_dates(docs_and_scores, current_time)
 
-        logger.debug(f"Calling parent with docs {len(docs_and_scores)}")
+        # logger.debug(f"Calling parent with docs {len(docs_and_scores)}")
         # Call the parent method to proceed with the usual flow
 
         def custom_similarity_search(self, query: str, k: int = 4, **kwargs) -> List[Tuple[Document, float]]:
-            logger.debug(f"custom_similarity_search query: {query} kwargs {kwargs}")
+            # logger.debug(f"custom_similarity_search query: {query} kwargs {kwargs}")
             return docs_and_scores
 
         override_relevance_score_fn = self.vectorstore.similarity_search_with_relevance_scores

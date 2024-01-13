@@ -1,6 +1,9 @@
 import logging
+import argparse
+from src.lib import lib_tools
 from src.lib import lib_docdb
 from src.lib import lib_logging
+from src.util import prompts
 from prompt_toolkit import prompt
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.keys import Keys
@@ -15,9 +18,16 @@ from operator import itemgetter
 # lib_logging.set_console_logging_level(logging.ERROR)
 # logger = lib_logging.get_logger(logging.ERROR)
 
-db = lib_docdb.get_docdb()
-llm = lib_docdb.get_llm()
-retriever = db.as_retriever()
+db = llm = retriever = None
+
+def init():
+    global db
+    global llm
+    global retriever
+
+    db = lib_docdb.get_docdb()
+    llm = lib_docdb.get_llm()
+    retriever = db.as_retriever()
 
 def format_email_docs(docs):
     return "\n\n".join([format_email_doc(doc) for doc in docs])
@@ -113,28 +123,7 @@ metadata_field_info = [
 
 
 def write_email(input):
-    write_prompt = ChatPromptTemplate.from_template("""# Write Stakeholder Weekly Progress Update
-
-## Instructions
-- Create a stakeholder weekly progress update.
-- Do not include any greetings, simply start the content of the message.
-- Maintain a candid and casual tone, avoiding expressions of exaggerated enthusiasm (e.g., 'thrilled', 'excited').
-- Minimize the use of exclamations.
-- Avoid statements that imply grandiosity or hype, such as 'we're onto something big.'
-- Do not include motivational or team-building statements, especially in the closing.
-- The update is an informal 'what's on my mind' communication.
-- Notes for content can be transcribed audio, a collection of random notes, or any combination thereof, not necessarily in a specific order.
-
-## Section 1: Tone and Style Examples
-```
-{emails}
-```
-
-## Section 2: Content for This Week
-```
-{notes}
-```
-""")
+    write_prompt = ChatPromptTemplate.from_template(prompts.write_email_update_prompt)
     print(f"Writing e-mail from notes: {input}")
 
     chain = (
@@ -185,4 +174,11 @@ def main():
             
 if __name__ == "__main__":
     print(f"DID YOU UPDATE THE EMAIL DB?")
+    parser = argparse.ArgumentParser(description='Your personal business advisor.')
+    parser.add_argument('company', choices=['cj', 'fc'], help='Specify the company environment ("cj" or "fc").')
+    args = parser.parse_args()
+
+    lib_docdb.set_company_environment(args.company.upper())
+    lib_tools.set_company_environment(args.company.upper())
+    init()
     main()

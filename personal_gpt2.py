@@ -72,13 +72,13 @@ def init(company):
     chat_history = ChatMessageHistory()
     memory = ConversationBufferMemory(chat_memory=chat_history, input_key="input", memory_key="history", return_messages=True)
 
-    gdrive_tool = create_retriever_tool(
-        lib_retrievers.get_time_weighted(db, 5, "gdrive"),
+    gdrive_tool = lib_tools.create_retriever_tool(
+        lib_retrievers.get_self_query(llm, db, "Company google drige docs", 5, "gdrive"),
         "doc_search",
         "Search company google drive documents",
     )
-    email_tool = create_retriever_tool(
-        lib_retrievers.get_time_weighted(db, 5, "gmail"),
+    email_tool = lib_tools.create_retriever_tool(
+        lib_retrievers.get_self_query(llm, db, "Company e-mails", 5, "gmail"),
         "email_search",
         "Search company emails",
     )
