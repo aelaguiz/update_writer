@@ -1,6 +1,5 @@
 import os
 from langchain.vectorstores import Chroma
-import datetime
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.chat_models import ChatOpenAI
 from langchain.vectorstores import Pinecone
@@ -76,16 +75,7 @@ def get_docdb():
     logger = lib_logging.get_logger()
 
     if not docdb:
-        # chroma_db_path = os.getenv(f"{COMPANY_ENV}_EMAILDB_PATH")
-        # logger.debug(f"Using chroma db path {chroma_db_path}")
         db_collection_name = "amirdocs"
-
-        # namespace = f"chromadb/{db_collection_name}"
-
-        # docdb = Chroma(persist_directory=chroma_db_path, embedding_function=get_embedding_fn())
-
-        # _record_manager = SQLRecordManager(namespace, db_url=f"sqlite:///{chroma_db_path}/chroma.sqlite3")
-        # _record_manager.create_schema()
 
         db_connection_string = os.getenv(f"{COMPANY_ENV}_DOCDB_DATABASE")
         record_manager_connection_string = os.getenv(f"{COMPANY_ENV}_RECORDMANAGER_DATABASE")
@@ -101,6 +91,7 @@ def get_docdb():
         namespace = f"pgvector/{db_collection_name}"
         _record_manager = SQLRecordManager(namespace, db_url=record_manager_connection_string)
 
+        _record_manager.create_schema()
 
 
         # # initialize pinecone
@@ -151,54 +142,69 @@ def add_texts_with_retry(docdb, texts, metadatas):
     docdb.add_texts(texts, metadatas=metadatas)
 
 
-def add_docs(docs, source, doc_type):
+def add_emails(email_details):
+    docdb = get_docdb()
+    global _record_manager
+
+    logger = lib_logging.get_logger()
+    try:
+        texts = []
+        mds = []
+        docs = []
+        for email in email_details:
+            try:
+                # print(email)
+                timestamp = int(email['send_date'].timestamp())
+
+                metadata = {
+                    'id': email['id'],
+                    'type': 'email',
+                    'email_id': email['id'],
+                    'thread_id': email['threadId'],
+                    'from_address': email['from'],
+                    'send_date': timestamp,
+                    'to_address': email['to'] if email['to'] else '',
+                    'subject': email['subject'] if email['subject'] else '',
+                    'source': 'gmail'
+                }
+
+                docs.append(Document(
+                    page_content=email['original_message'],
+                    metadata=metadata
+                
+                ))
+            except Exception as e:
+                logger.error(f"Error setting metadata: {e}")
+                raise RuntimeError(f"Error setting metadata: {e}")
+
+
+        res = index(
+            docs,
+            _record_manager,
+            docdb,
+            cleanup=None,
+            source_id_key="source"
+        )
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        logger.error(f"Error loading document into db: {e}")
+        raise RuntimeError(f"Error loading document into db: {e}")
+
+def add_docs(docs):
     logger = lib_logging.get_logger()
     docdb = get_docdb()
     global _record_manager
 
     try:
         logger.debug(f"Adding {len(docs)} docs to index")
-
-        new_docs = []
         for doc in docs:
             if not doc.metadata.get('id'):
-                raise RuntimeError(f"Document does not have an id")
-            if not doc.metadata.get('created_at') or type(doc.metadata.get('created_at')) != int:
-                raise RuntimeError(f"Document {doc.metadata.get('id')} does not have a valid created_at timestamp")
-
-            if not doc.metadata.get('name'):
-                raise RuntimeError(f"Document {doc.metadata.get('id')} does not have a valid name")
-            if doc_type is None:
-                if not doc.metadata.get('type'):
-                    raise RuntimeError(f"Document {doc.metadata.get('id')} does not have a valid type and none specified")
-            else:
-                if not doc.metadata.get('type'):
-                    doc.metadata['type'] = doc_type
-
-            if source is None:
-                if not doc.metadata.get('source'):
-                    raise RuntimeError(f"Document {doc.metadata.get('id')} does not have a valid source and none specified")
-            else:
-                if not doc.metadata.get('source'):
-                    doc.metadata['source'] = source
-
-            created_at = datetime.datetime.utcfromtimestamp(doc.metadata.get('created_at')).strftime('%Y-%m-%d %H:%M:%S')
-            new_page_content = f"""
-DOCUMENT TYPE: {doc.metadata['type']}
-DOCUMENT CREATED AT: {created_at}
-DOCUMENT SOURCE: {doc.metadata['source']}
-DOCUMENT NAME: {doc.metadata['name']}
-CONTENT:
-
-```
-{doc.page_content}
-```
-"""
-            new_doc = Document(page_content=new_page_content, metadata=doc.metadata)
-            new_docs.append(new_doc)
+                assert(False)
 
         res = index(
-            new_docs,
+            docs,
             _record_manager,
             docdb,
             cleanup=None,

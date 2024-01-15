@@ -122,10 +122,10 @@ class PGVectorTranslator(Visitor):
     def visit_structured_query(
         self, structured_query: StructuredQuery
     ) -> Tuple[str, dict]:
-        print("PGVectorTranslator visit_structured_query", structured_query, structured_query.query, structured_query.filter)
+        # print("PGVectorTranslator visit_structured_query", structured_query, structured_query.query, structured_query.filter)
         if structured_query.filter is None:
             kwargs = {}
         else:
             kwargs = {"predicates": structured_query.filter.accept(self)}
-        print("PGVectorTranslator visit_structured_query", structured_query.query, "kwargs", kwargs)
+        # print("PGVectorTranslator visit_structured_query", structured_query.query, "kwargs", kwargs)
         return structured_query.query, kwargs
