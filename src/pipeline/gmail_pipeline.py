@@ -1,4 +1,5 @@
 import dotenv
+import json
 from ..lib.lib_logging import get_logger, get_run_logger, setup_logging, set_console_logging_level
 from tqdm import tqdm
 from langchain_core.documents import Document
@@ -125,8 +126,48 @@ def gmail_pipeline(max_documents):
 
     logger.info(f"Successfully loaded {len(emails)} emails")
 
-def run_pipeline(company_env, max_documents):
+
+def download_gmails(max_documents, email_output_file):
+    loaded_email_ids = []
+    emails = get_gmail_messages(max_documents)
+
+    batch_size = 25
+    email_batches = list(batch(emails, batch_size))
+
+    succeeded = 0
+    failed = 0
+
+    with open(email_output_file, 'a') as file:  # Open file in append mode
+        for batch_emails in tqdm(email_batches, desc="Processing Emails", total=len(email_batches)):
+            try:
+                for email in batch_emails:
+                    try:
+                        details = get_message_details(email)
+                        details['send_date'] = details['send_date'].isoformat()
+                        json.dump(details, file)  # Write each email detail as a JSON record
+                        file.write('\n')  # New line for each record
+                        succeeded += 1
+                    except Exception as email_exc:
+                        import traceback
+                        traceback.print_exc()
+                        logger.error(f"Error processing email: {email_exc}")
+                        failed += 1
+            except Exception as exc:
+                logger.error(f"One or more batches generated an exception: {exc}")
+                # If a batch fails, count all emails in the batch as failed
+                failed += len(batch_emails)
+
+            logger.info(f"Successfully loaded {succeeded} emails, failed {failed}")
+
+    logger.info(f"Successfully loaded {len(emails)} emails")
+
+
+def run_pipeline(company_env, max_documents, download=False, email_output_file=None):
     global COMPANY_ENV
     COMPANY_ENV = company_env
     lib_docdb.set_company_environment(COMPANY_ENV)
-    gmail_pipeline(max_documents)
+
+    if not download:
+        gmail_pipeline(max_documents)
+    else:
+        download_gmails(max_documents, email_output_file)

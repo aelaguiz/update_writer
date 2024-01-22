@@ -117,7 +117,7 @@ def init(company):
 
     lmd = lc_logger.LlmDebugHandler()  
     db = lib_docdb.get_docdb()
-    llm = lib_docdb.get_llm()
+    llm = lib_docdb.get_dumb_llm()
     retriever = db.as_retriever()
 
     time_weighted_retriever = EnhancedTimeWeightedRetriever(

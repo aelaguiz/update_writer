@@ -67,7 +67,7 @@ def init(company):
 
     lmd = lc_logger.LlmDebugHandler()  
     db = lib_docdb.get_docdb()
-    llm = lib_docdb.get_llm()
+    llm = lib_docdb.get_dumb_llm()
 
     chat_history = ChatMessageHistory()
     memory = ConversationBufferMemory(chat_memory=chat_history, input_key="input", memory_key="history", return_messages=True)

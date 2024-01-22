@@ -33,7 +33,7 @@ def init(company):
 
     lmd = lc_logger.LlmDebugHandler()  
     db = lib_docdb.get_docdb()
-    llm = lib_docdb.get_llm()
+    llm = lib_docdb.get_dumb_llm()
     retriever = db.as_retriever()
     chat_history = ChatMessageHistory()
     memory = ConversationBufferMemory(chat_memory=chat_history, input_key="input", output_key="output", return_messages=True)

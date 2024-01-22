@@ -17,12 +17,13 @@ import pinecone
 from . import lib_logging
 
 docdb = None
-llm = None
+_dumb_llm = None
 pinecone_index = None
 _record_manager = None
-_json_llm = None
+_dumb_json_llm = None
 
-OPENAI_MODEL = os.getenv("OPENAI_MODEL")
+SMART_OPENAI_MODEL = os.getenv("SMART_OPENAI_MODEL")
+DUMB_OPENAI_MODEL = os.getenv("DUMB_OPENAI_MODEL")
 EMAILDB_PATH = None
 OPENAI_TEMPERATURE = float(os.getenv("OPENAI_TEMPERATURE"))
 
@@ -47,25 +48,45 @@ def get_company_environment():
 def get_embedding_fn():
     return OpenAIEmbeddings(openai_api_key=os.getenv('OPENAI_API_KEY'), timeout=30)
 
-def get_llm():
-    global llm 
+def get_dumb_llm():
+    global _dumb_llm 
 
-    if not llm:
-        llm = ChatOpenAI(model_name=OPENAI_MODEL, temperature=OPENAI_TEMPERATURE)
+    if not _dumb_llm:
+        _dumb_llm = ChatOpenAI(model_name=DUMB_OPENAI_MODEL, temperature=OPENAI_TEMPERATURE)
 
-    return llm
+    return _dumb_llm
 
-def get_json_llm():
-    global _json_llm 
+def get_dumb_json_llm():
+    global _dumb_json_llm 
 
-    if not _json_llm:
-        _json_llm = ChatOpenAI(model_name=OPENAI_MODEL, temperature=OPENAI_TEMPERATURE, timeout=httpx.Timeout(15.0, read=60.0, write=10.0, connect=3.0), max_retries=0).bind(
+    if not _dumb_json_llm:
+        _dumb_json_llm = ChatOpenAI(model_name=DUMB_OPENAI_MODEL, temperature=OPENAI_TEMPERATURE, timeout=httpx.Timeout(15.0, read=60.0, write=10.0, connect=3.0), max_retries=0).bind(
             response_format= {
                 "type": "json_object"
             }
         )
 
-    return _json_llm
+    return _dumb_json_llm
+
+def get_smart_llm():
+    global _smart_llm 
+
+    if not _smart_llm:
+        _smart_llm = ChatOpenAI(model_name=SMART_OPENAI_MODEL, temperature=OPENAI_TEMPERATURE)
+
+    return _smart_llm
+
+def get_smart_json_llm():
+    global _smart_json_llm 
+
+    if not _smart_json_llm:
+        _smart_json_llm = ChatOpenAI(model_name=SMART_OPENAI_MODEL, temperature=OPENAI_TEMPERATURE, timeout=httpx.Timeout(15.0, read=60.0, write=10.0, connect=3.0), max_retries=0).bind(
+            response_format= {
+                "type": "json_object"
+            }
+        )
+
+    return _dumb_json_llm
 
 def get_docdb():
     global docdb

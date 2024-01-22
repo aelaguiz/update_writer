@@ -14,7 +14,7 @@ def main():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run the Gmail pipeline for a specific company.')
     parser.add_argument('company', choices=['cj', 'fc'], help='Specify the company environment ("cj" or "fc").')
-    parser.add_argument('workers', type=int, help='Number of worker threads to use.')
+    parser.add_argument('max_documents', type=int, help='Maximum number of documents to load.')
     args = parser.parse_args()
 
-    gmail_pipeline.run_pipeline(args.company.upper(), args.workers)
+    gmail_pipeline.run_pipeline(args.company.upper(), args.max_documents)

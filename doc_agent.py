@@ -51,7 +51,7 @@ def process_command(agent, input):
     print(res['output'])
 
 def main():
-    llm = lib_docdb.get_llm()
+    llm = lib_docdb.get_dumb_llm()
 
     doc_db = lib_docdb.get_docdb()
     retriever = doc_db.as_retriever()
@@ -61,8 +61,6 @@ def main():
         "doc_search",
         "Search company documents",
     )
-
-
 
     tools = [retriever_tool]
     agent = OpenAIFunctionsAgent(

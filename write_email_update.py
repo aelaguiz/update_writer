@@ -26,7 +26,7 @@ def init():
     global retriever
 
     db = lib_docdb.get_docdb()
-    llm = lib_docdb.get_llm()
+    llm = lib_docdb.get_dumb_llm()
     retriever = db.as_retriever()
 
 def format_email_docs(docs):
