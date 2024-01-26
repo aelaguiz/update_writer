@@ -29,10 +29,11 @@ from tqdm import tqdm
 
 from ..lib.loaders import epub_loader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+import os
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        logger.error("Usage: python script.py company path_to_book.epub")
+        logger.error("Usage: python script.py company path_to_books")
         sys.exit(1)
 
 
@@ -41,16 +42,21 @@ if __name__ == "__main__":
 
     lib_docdb.set_company_environment(company.upper())
 
-    loader = epub_loader.EPubLoader(epub_path)
-    docs = loader.load()
+    epub_files = [file for file in os.listdir(epub_path) if file.endswith(".epub")]
 
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=int(2000), chunk_overlap=200, add_start_index=True)
-    all_docs = text_splitter.split_documents(docs)
+    for epub_file in epub_files:
+        epub_file_path = os.path.join(epub_path, epub_file)
+        logger.info(f"Loding {epub_file_path}")
 
-    # logger.debug(all_docs)
-    for doc in all_docs:
-        doc.metadata['id'] = doc.metadata['title'] + '-' + str(doc.metadata['start_index'])
-        doc.metadata['created_at'] = int(datetime.datetime.now().timestamp())
-        doc.metadata['name'] = doc.metadata['title']
+        loader = epub_loader.EPubLoader(epub_file_path)
+        docs = loader.load()
 
-    lib_docdb.add_docs(all_docs, source="epub", doc_type="book")
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=int(2000), chunk_overlap=200, add_start_index=True)
+        all_docs = text_splitter.split_documents(docs)
+
+        for doc in all_docs:
+            doc.metadata['id'] = doc.metadata['title'] + '-' + str(doc.metadata['start_index'])
+            doc.metadata['created_at'] = int(datetime.datetime.now().timestamp())
+            doc.metadata['name'] = doc.metadata['title']
+
+        lib_docdb.add_docs(all_docs, source="epub", doc_type="book")

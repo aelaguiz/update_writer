@@ -100,7 +100,7 @@ def create_retriever_tool(
     """
 
     def _get_relevant_documents(query: str) -> str:
-        print(f"Getting relevant documents for query: {query}")
+        # print(f"Getting relevant documents for query: {query}")
         docs = retriever.get_relevant_documents(query)
 
         logger.debug(f"Getting relevant documents: {docs}")

@@ -82,8 +82,13 @@ def init(company):
         "email_search",
         "Search company emails",
     )
+    book_tool = lib_tools.create_retriever_tool(
+        lib_retrievers.get_retriever(db, 10, source_filter="epub"),
+        "book_search",
+        "Search books",
+    )
 
-    tools = [gdrive_tool, email_tool, lib_tools.save_gdoc_tool, lib_tools.update_gdoc_tool, lib_tools.change_title_gdoc_tool]
+    tools = [book_tool, gdrive_tool, email_tool, lib_tools.save_gdoc_tool, lib_tools.update_gdoc_tool, lib_tools.change_title_gdoc_tool]
     agent = OpenAIFunctionsAgent(
         llm= llm,
         prompt= agent_prompt,
@@ -157,7 +162,7 @@ def main():
             
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Your personal business advisor.')
-    parser.add_argument('company', choices=['cj', 'fc'], help='Specify the company environment ("cj" or "fc").')
+    parser.add_argument('company', choices=['cj', 'fc', 'mb'], help='Specify the company environment ("cj" or "fc" or "mb").')
     args = parser.parse_args()
 
     lib_docdb.set_company_environment(args.company.upper())

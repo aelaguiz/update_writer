@@ -48,7 +48,7 @@ def get_company_environment():
     return COMPANY_ENV
 
 def get_embedding_fn():
-    return OpenAIEmbeddings(openai_api_key=os.getenv('OPENAI_API_KEY'), timeout=30, model=os.getenv('OPENAI_EMBEDDING_MDOEL'))
+    return OpenAIEmbeddings(openai_api_key=os.getenv('OPENAI_API_KEY'), timeout=30, model=os.getenv('OPENAI_EMBEDDING_MODEL'))
 
 def get_dumb_llm():
     global _dumb_llm 
