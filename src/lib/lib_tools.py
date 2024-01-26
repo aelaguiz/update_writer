@@ -103,7 +103,7 @@ def create_retriever_tool(
         # print(f"Getting relevant documents for query: {query}")
         docs = retriever.get_relevant_documents(query)
 
-        logger.debug(f"Getting relevant documents: {docs}")
+        logger.info(f"Getting relevant documents for query {query}")
 
         for doc in docs:
             # created_at = doc.metadata['created_at']
