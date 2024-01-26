@@ -19,6 +19,7 @@ from . import lib_logging
 
 docdb = None
 _dumb_llm = None
+_smart_llm = None
 pinecone_index = None
 _record_manager = None
 _dumb_json_llm = None
@@ -47,7 +48,7 @@ def get_company_environment():
     return COMPANY_ENV
 
 def get_embedding_fn():
-    return OpenAIEmbeddings(openai_api_key=os.getenv('OPENAI_API_KEY'), timeout=30)
+    return OpenAIEmbeddings(openai_api_key=os.getenv('OPENAI_API_KEY'), timeout=30, model=os.getenv('OPENAI_EMBEDDING_MDOEL'))
 
 def get_dumb_llm():
     global _dumb_llm 
@@ -169,7 +170,7 @@ def add_docs(docs, source, doc_type):
             if not doc.metadata.get('id'):
                 raise RuntimeError(f"Document does not have an id")
             if not doc.metadata.get('created_at') or type(doc.metadata.get('created_at')) != int:
-                raise RuntimeError(f"Document {doc.metadata.get('id')} does not have a valid created_at timestamp")
+                raise RuntimeError(f"Document {doc.metadata.get('id')} does not have a valid created_at timestamp {doc.metadata.get('created_at')} {type(doc.metadata.get('created_at'))}")
 
             if not doc.metadata.get('name'):
                 raise RuntimeError(f"Document {doc.metadata.get('id')} does not have a valid name")
