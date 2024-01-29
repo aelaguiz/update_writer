@@ -37,10 +37,17 @@ IT IS ESSENTIAL YOU CORRECT THE TIMELINE HERE
 4. Content of message: Show me all of the points, anecdotes and nuance phrases from my transcript. Put them in a narrative order. Focus on maximizing information and capturing character & my personality. Don't summarize much if at all. Show me in markdown as bulleted lists.
 5. Key phrases
 Under each bullet point pull a few character giving phrases or anecdotes from my transcript that could be include. These should be exact quotes. Ideally 4-5 per bullet point if possible, dont make anything up. If you can't identify that many it is okay.
-1. okay now write the e-mail again but make sure to include as many of these phrases as you can. You can omit verbal stumbling, but otherwise seek to be faithful to my words. Again the e-mail should adhere to the imeline, narrative and style I normally use.
+1. Now write a whats on my mind e-mail from my notes. make sure to include as many of these phrases as you can. You can omit verbal stumbling, but otherwise seek to be faithful to my words. Again the e-mail should adhere to the imeline, narrative and style I normally use.
+
+
+
+
+----------------------------
+
 HUMAN: Review my "whats on my mind e-mails" show me what you see about my writing style, what writing devices I employ, my tone, etc. Be as detailed as possible.
 
 Now, write a "Whats on my mind e-mail" from the transcript I sent you.
+
 1. Reference the writing style & tone summary of my whats on my mind e-mails. Reference the whats on my mind e-mails themselves if necessary
 2. Refer to the narrative summary you wrote - Use the key points & narrative order summary you made to structure the flow of the e-mail
 3. refer to the specific phrases you identified above. Use them when writing each section. do not put quotation marks around them. You can omit verbal stumbling, but otherwise seek to be faithful to my words. Again the e-mail should adhere to the timeline, narrative and style I normally use.

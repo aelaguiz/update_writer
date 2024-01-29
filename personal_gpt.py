@@ -51,8 +51,12 @@ class EnhancedTimeWeightedRetriever(TimeWeightedVectorStoreRetriever):
                 doc.metadata['created_at'] = formatted_timestamp
                 doc.metadata['last_accessed_at'] = formatted_timestamp
             elif doc.metadata.get("source") == 'gdrive':
-                doc.metadata['created_at'] = datetime.datetime.fromisoformat(doc.metadata.get('created_time')).replace(tzinfo=None)
-                doc.metadata['last_accessed_at'] = datetime.datetime.fromisoformat(doc.metadata.get('modified_time')).replace(tzinfo=None)
+                formatted_timestamp = datetime.datetime.utcfromtimestamp(unix_timestamp)
+
+                doc.metadata['created_at'] = formatted_timestamp
+                doc.metadata['last_accessed_at'] = formatted_timestamp
+                # doc.metadata['created_at'] = datetime.datetime.fromisoformat(doc.metadata.get('created_time')).replace(tzinfo=None)
+                # doc.metadata['last_accessed_at'] = datetime.datetime.fromisoformat(doc.metadata.get('modified_time')).replace(tzinfo=None)
             else:
                 logger.error(f"Unknown document type: {doc.metadata.get('type')} {doc.metadata.get('source')}")
                 assert(False)
